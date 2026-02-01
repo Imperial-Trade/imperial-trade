@@ -1,8 +1,4 @@
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import ProAnalysisModal from '@/components/charts/mecca/ProAnalysisModal';
-import { ProAnalysisResult } from '@/components/charts/mecca/proAnalysisTypes';
-import { Key, History, Brain, Upload, Loader2, Image as ImageIcon, CheckCircle2, X } from 'lucide-react';
 import { 
   SettingsIcon, MaximizeIcon, BrainCircuitIcon, MicIcon, 
   HomeIcon, PlusIcon, BarChartIcon, BookIcon, ArrowRightIcon,
@@ -25,18 +21,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTradeJournal } from '@/contexts/TradeJournalContext';
 import { compressImage } from '@/utils/imageCompression';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
-import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 import { BrokerSelection, BrokerType } from './BrokerSelection';
 import { BrokerLoginForm } from './BrokerLoginForm';
 import { AutoJournalView } from './AutoJournalView';
 import RiskCalculator from '@/components/tools/RiskCalculator';
-import { GeminiSetupAnalyzer, GeminiSetupAnalyzerRef } from '@/components/charts/GeminiSetupAnalyzer';
+import { GeminiSetupAnalyzer } from '@/components/charts/GeminiSetupAnalyzer';
 import { MeccaHeader } from '@/components/charts/mecca';
-import { MeccaSpotlightCard as SpotlightCard } from '@/components/charts/mecca/MeccaSpotlightCard';
-import { DeconstructorPanel, DeconstructorButtons, DeconstructorPanelContent } from '@/components/charts/mecca/DeconstructorPanel';
-import { neonColors } from '@/components/charts/mecca/neonTheme';
 import NewsTicker from '@/components/shared/NewsTicker';
-import InsightHistoryPage from './InsightHistoryPage';
 
 // Broker options for mobile AUTO mode
 const BROKERS = [
@@ -179,14 +170,10 @@ const SpotlightCard: React.FC<{
   tilt?: boolean;
   onClick?: () => void;
   noPadding?: boolean;
-  style?: React.CSSProperties;
-}> = ({ children, className = "", isDarkMode, tilt = false, onClick, noPadding = false, style }) => {
+}> = ({ children, className = "", isDarkMode, tilt = false, onClick, noPadding = false }) => {
   const divRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [tiltValues, setTiltValues] = useState({ x: 0, y: 0 });
-  
-  // Check for reduced motion preference
-  const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!divRef.current) return;
@@ -214,10 +201,9 @@ const SpotlightCard: React.FC<{
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setTiltValues({ x: 0, y: 0 })}
       onClick={onClick}
-      className={`relative rounded-3xl ${prefersReducedMotion ? '' : 'transition-transform duration-300 ease-out'} ${className}`}
+      className={`relative rounded-3xl transition-transform duration-300 ease-out ${className}`}
       style={{
-          transform: tilt && !prefersReducedMotion ? `perspective(1000px) rotateX(${tiltValues.x}deg) rotateY(${tiltValues.y}deg)` : 'none',
-          ...style,
+          transform: tilt ? `perspective(1000px) rotateX(${tiltValues.x}deg) rotateY(${tiltValues.y}deg)` : 'none',
       }}
     >
       <div className="absolute inset-0 rounded-3xl pointer-events-none z-0" style={{ background: borderColor }} />
@@ -226,7 +212,7 @@ const SpotlightCard: React.FC<{
         style={{ background: `radial-gradient(800px circle at ${position.x}px ${position.y}px, ${spotlightColor}, transparent 40%)` }}
       />
       <div className={`relative w-full p-[1px] rounded-3xl z-10 ${heightClass}`}>
-          <div className={`relative w-full bg-white dark:bg-[#0A0A0A] rounded-[23px] overflow-hidden flex flex-col ${heightClass} ${noPadding ? '' : 'p-3 sm:p-4 md:p-5 lg:p-6'}`}>
+          <div className={`relative w-full bg-[#F5F5F0] dark:bg-[#0A0A0A] rounded-[23px] overflow-hidden flex flex-col ${heightClass} ${noPadding ? '' : 'p-6'}`}>
              {children}
           </div>
       </div>
@@ -286,7 +272,7 @@ const TradeReplayWidget: React.FC<{ isDarkMode: boolean, trades: TradeEntry[] }>
                     <h3 className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-stone-400' : 'text-stone-500'}`}>Trade Replay</h3>
                     <div className="flex items-center gap-2 mt-1">
                         <span className="text-sm font-mono font-bold">{activeTrade.asset}</span>
-                        <span className={`text-[9px] sm:text-[10px] md:text-xs px-1.5 py-0.5 rounded font-bold uppercase ${activeTrade.pnl > 0 ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500'}`}>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${activeTrade.pnl > 0 ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500'}`}>
                             {activeTrade.pnl > 0 ? 'WIN' : 'LOSS'}
                         </span>
                     </div>
@@ -296,7 +282,7 @@ const TradeReplayWidget: React.FC<{ isDarkMode: boolean, trades: TradeEntry[] }>
                     onClick={() => {
                          if (trades.length > 0) setCurrentTradeIndex((prev) => (prev + 1) % trades.length);
                     }}
-                    className="flex items-center gap-1 text-[9px] sm:text-[10px] md:text-xs font-bold uppercase hover:opacity-70 transition-opacity p-2 border rounded-lg border-white/10"
+                    className="flex items-center gap-1 text-[10px] font-bold uppercase hover:opacity-70 transition-opacity p-2 border rounded-lg border-white/10"
                 >
                     <span>Next Trade</span>
                     <PlayIcon className="w-3 h-3" />
@@ -330,7 +316,7 @@ const TradeReplayWidget: React.FC<{ isDarkMode: boolean, trades: TradeEntry[] }>
                  )}
 
                 <div className="absolute top-4 left-4">
-                    <div className="px-3 py-1 rounded bg-black/40 backdrop-blur border border-white/10 text-[9px] sm:text-[10px] md:text-xs font-mono text-white">
+                    <div className="px-3 py-1 rounded bg-black/40 backdrop-blur border border-white/10 text-[10px] font-mono text-white">
                         {isPlaying ? 'REPLAYING SESSION...' : 'WAITING SETUP...'}
                     </div>
                 </div>
@@ -361,7 +347,7 @@ const PatternDojo: React.FC<{ isDarkMode: boolean, onOutcome: (win: boolean) => 
         <div className="h-full flex flex-col relative overflow-hidden">
              <div className="flex justify-between items-center mb-2 z-10">
                 <h3 className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-stone-400' : 'text-stone-500'}`}>Pattern Dojo</h3>
-                <span className="text-[9px] sm:text-[10px] md:text-xs px-2 py-0.5 rounded-full bg-stone-800 text-stone-400">XP Grinder</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-800 text-stone-400">XP Grinder</span>
             </div>
             
             <div className="flex-1 relative rounded-xl overflow-hidden bg-black group border border-white/5 shadow-2xl">
@@ -457,7 +443,7 @@ const MacroCalendar: React.FC<{
     const renderYearView = () => {
         const months = Array.from({ length: 12 }, (_, i) => i);
         return (
-            <div className="grid grid-cols-3 grid-rows-4 h-full gap-1.5 animate-in fade-in zoom-in duration-300 overflow-hidden" style={{ touchAction: 'none' }}>
+            <div className="grid grid-cols-3 grid-rows-4 h-full gap-1.5 animate-in fade-in zoom-in duration-300 overflow-y-auto custom-scrollbar">
                 {months.map(m => {
                     const date = new Date(year, m, 1);
                     const monthName = date.toLocaleDateString(undefined, { month: 'short' }).toUpperCase();
@@ -494,7 +480,7 @@ const MacroCalendar: React.FC<{
                     
                     return (
                         <div key={m} onClick={() => { setViewDate(new Date(year, m, 1)); setTimeFilter('M'); }} className={`rounded-xl border p-1.5 flex flex-col justify-between cursor-pointer transition-all hover:scale-105 min-h-0 ${cardBgClass}`}>
-                            <span className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold opacity-60 mb-1 shrink-0">{monthName}</span>
+                            <span className="text-[9px] font-bold opacity-60 mb-1 shrink-0">{monthName}</span>
                             
                             {/* Mini calendar grid for days */}
                             <div className="grid grid-cols-7 gap-[1px] mb-1.5 flex-1 min-h-0">
@@ -535,8 +521,8 @@ const MacroCalendar: React.FC<{
         const firstDayOfWeek = new Date(year, month, 1).getDay();
         const emptySlots = Array.from({ length: firstDayOfWeek }, (_, i) => i);
         return (
-            <div className="grid grid-cols-7 grid-rows-6 h-full gap-x-1 sm:gap-x-1.5 md:gap-x-2 gap-y-0.5 animate-in fade-in duration-300" style={{ gridAutoRows: 'minmax(0, 1fr)', height: '100%', minHeight: 0 }}>
-                 {['S','M','T','W','T','F','S'].map((d, idx) => <div key={`day-header-${idx}`} className="flex items-center justify-center text-[7px] sm:text-[8px] md:text-[9px] opacity-30 font-bold h-4">{d}</div>)}
+            <div className="grid grid-cols-7 grid-rows-6 h-full gap-x-2 gap-y-0.5 animate-in fade-in duration-300" style={{ gridAutoRows: '1fr' }}>
+                 {['S','M','T','W','T','F','S'].map((d, idx) => <div key={`day-header-${idx}`} className="flex items-center justify-center text-[8px] opacity-30 font-bold h-4">{d}</div>)}
                  {emptySlots.map(i => <div key={`empty-${i}`} />)}
                  {days.map((day) => {
                      const key = `${year}-${month}-${day}`;
@@ -560,10 +546,10 @@ const MacroCalendar: React.FC<{
                      
                      return (
                          <div key={day} onClick={() => { setViewDate(new Date(year, month, day)); setTimeFilter('D'); }} className={`relative group transition-all duration-300 cursor-pointer flex flex-col p-0.5 sm:p-1 border-t pt-0.5 h-full overflow-hidden ${containerClass} ${isDarkMode ? 'border-white/5' : 'border-black/5'}`}>
-                             <span className={`text-[7px] sm:text-[8px] md:text-[9px] lg:text-[10px] font-bold shrink-0 ${hasData ? (isDarkMode ? 'text-white' : 'text-stone-900') : (isDarkMode ? 'text-stone-500' : 'text-stone-400')} group-hover:text-stone-900 dark:group-hover:text-white`}>{day}</span>
+                             <span className={`text-[8px] sm:text-[10px] font-bold shrink-0 ${hasData ? (isDarkMode ? 'text-white' : 'text-stone-900') : (isDarkMode ? 'text-stone-500' : 'text-stone-400')} group-hover:text-stone-900 dark:group-hover:text-white`}>{day}</span>
                             {hasData && (
                                 <div className="flex-1 flex flex-col items-center justify-center text-center min-w-0 px-0.5 overflow-hidden">
-                                    <div className={`text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs font-bold font-sans tracking-tight leading-[1.0] whitespace-nowrap ${isWin ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>{(pnl >= 0 ? '+' : '-') + '$' + Math.abs(pnl).toFixed(2)}</div>
+                                    <div className={`text-[7px] sm:text-[9px] md:text-xs font-bold font-sans tracking-tight leading-[1.0] break-all ${isWin ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : (isDarkMode ? 'text-rose-400' : 'text-rose-600')}`}>{(pnl >= 0 ? '+' : '-') + '$' + Math.abs(pnl).toFixed(2)}</div>
                                     <div className="text-[6px] sm:text-[7px] opacity-40 font-mono mt-0.5 whitespace-nowrap">{tradeCount} {tradeCount === 1 ? 'Trade' : 'Trades'}</div>
                                 </div>
                             )}
@@ -589,12 +575,12 @@ const MacroCalendar: React.FC<{
                     return (
                         <div key={i} className={`flex flex-1 ${!isLastDay ? `border-b ${isDarkMode ? 'border-white/5' : 'border-black/5'}` : ''} group transition-colors hover:bg-white/[0.02] min-h-0 overflow-hidden`}>
                             <div className={`w-20 shrink-0 flex flex-col justify-center px-2 border-r ${isDarkMode ? 'border-white/5' : 'border-black/5'} ${isToday ? 'bg-yellow-500/5 dark:bg-bronze-500/5' : ''}`}>
-                                <span className={`text-[9px] sm:text-[10px] md:text-xs font-bold tracking-widest ${isToday ? (isDarkMode ? 'text-bronze-500' : 'text-yellow-600') : 'text-stone-500'}`}>{dayName},</span>
+                                <span className={`text-[10px] font-bold tracking-widest ${isToday ? (isDarkMode ? 'text-bronze-500' : 'text-yellow-600') : 'text-stone-500'}`}>{dayName},</span>
                                 <span className={`text-xs font-black ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>{datePart}</span>
                             </div>
                             <div className={`flex-1 flex overflow-x-auto custom-scrollbar min-w-0`} style={{ touchAction: 'pan-x' }}>
                                 {tradesForDay.length === 0 ? (
-                                    <div className={`w-full flex flex-col items-center justify-center border-r ${isDarkMode ? 'bg-white/5 border-white/5 text-stone-600' : 'bg-stone-200/50 border-black/5 text-stone-400'}`}><span className="text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-50">No Trades</span></div>
+                                    <div className={`w-full flex flex-col items-center justify-center border-r ${isDarkMode ? 'bg-white/5 border-white/5 text-stone-600' : 'bg-stone-200/50 border-black/5 text-stone-400'}`}><span className="text-[10px] font-bold uppercase tracking-widest opacity-50">No Trades</span></div>
                                 ) : (
                                     tradesForDay.map(trade => {
                                         const isWin = trade.pnl > 0;
@@ -603,10 +589,10 @@ const MacroCalendar: React.FC<{
                                         return (
                                             <div key={trade.id} className={`shrink-0 min-w-[50%] max-w-[50%] p-2 sm:p-3 border-r ${isDarkMode ? 'border-white/5' : 'border-black/5'} flex flex-col justify-between h-full overflow-hidden ${boxClass}`}>
                                                 <div className="flex justify-between items-start min-w-0 gap-1">
-                                                    <span className={`text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs sm:text-[9px] sm:text-[10px] md:text-xs font-black uppercase truncate flex-1 ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>{trade.asset}</span>
-                                                    <span className={`text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs sm:text-xs font-mono font-bold shrink-0 ${textPnlClass}`}>{(trade.pnl >= 0 ? '+' : '-') + '$' + Math.abs(trade.pnl).toFixed(2)}</span>
+                                                    <span className={`text-[9px] sm:text-[10px] font-black uppercase truncate flex-1 ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>{trade.asset}</span>
+                                                    <span className={`text-[9px] sm:text-xs font-mono font-bold shrink-0 ${textPnlClass}`}>{(trade.pnl >= 0 ? '+' : '-') + '$' + Math.abs(trade.pnl).toFixed(2)}</span>
                                                 </div>
-                                                <div className={`text-[7px] sm:text-[8px] md:text-[9px] sm:text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs line-clamp-2 leading-relaxed opacity-80 font-medium ${isDarkMode?'text-stone-300':'text-stone-700'}`}>{trade.notes}</div>
+                                                <div className={`text-[8px] sm:text-[9px] line-clamp-2 leading-relaxed opacity-80 font-medium ${isDarkMode?'text-stone-300':'text-stone-700'}`}>{trade.notes}</div>
                                             </div>
                                         );
                                     })
@@ -615,8 +601,8 @@ const MacroCalendar: React.FC<{
                             <div className={`w-16 sm:w-20 shrink-0 flex flex-col justify-center items-center px-0.5 sm:px-1 gap-1 bg-transparent border-l ${isDarkMode ? 'border-white/5' : 'border-black/5'} min-w-0 overflow-hidden`}>
                                 {data ? (
                                     <div className="text-center w-full min-w-0 px-0.5">
-                                        <div className={`text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs sm:text-xs md:text-sm font-black font-mono mb-0.5 break-all leading-tight ${data.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{(data.pnl >= 0 ? '+' : '-') + '$' + Math.abs(data.pnl).toFixed(2)}</div>
-                                        <div className="text-[7px] sm:text-[8px] md:text-[9px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wide whitespace-nowrap">{data.count} {data.count === 1 ? 'Trade' : 'Trades'}</div>
+                                        <div className={`text-[9px] sm:text-xs md:text-sm font-black font-mono mb-0.5 break-all leading-tight ${data.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{(data.pnl >= 0 ? '+' : '-') + '$' + Math.abs(data.pnl).toFixed(2)}</div>
+                                        <div className="text-[7px] sm:text-[8px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wide whitespace-nowrap">{data.count} {data.count === 1 ? 'Trade' : 'Trades'}</div>
                                     </div>
                                 ) : (
                                     <span className="text-xl font-bold text-stone-800 dark:text-stone-800 opacity-20 select-none">—</span>
@@ -636,14 +622,14 @@ const MacroCalendar: React.FC<{
         return (
             <div className="h-full flex flex-col min-h-0 animate-in fade-in slide-in-from-bottom-4 duration-300">
                 <div className="flex items-center justify-between mb-2 px-2 shrink-0">
-                    <span className="text-[9px] sm:text-[10px] md:text-xs font-bold opacity-50 uppercase tracking-widest">{dayTrades.length} {dayTrades.length === 1 ? 'Trade' : 'Trades'} Found</span>
+                    <span className="text-[10px] font-bold opacity-50 uppercase tracking-widest">{dayTrades.length} {dayTrades.length === 1 ? 'Trade' : 'Trades'} Found</span>
                 </div>
                 <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-2 pr-2" style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch', maxHeight: '100%' }}>
                     {dayTrades.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center opacity-30"><NotebookIcon className="w-8 h-8 mb-2" /><span className="text-[9px] sm:text-[10px] md:text-xs font-bold uppercase">No Activity</span></div>
+                        <div className="h-full flex flex-col items-center justify-center opacity-30"><NotebookIcon className="w-8 h-8 mb-2" /><span className="text-[10px] font-bold uppercase">No Activity</span></div>
                     ) : (
                         dayTrades.map(trade => (
-                            <div key={trade.id} className={`p-3 rounded-xl border flex gap-3 shrink-0 ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'}`}><div className={`w-1 rounded-full shrink-0 ${trade.pnl >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} /><div className="flex-1 min-w-0"><div className="flex justify-between items-center mb-1"><span className="font-bold text-xs">{trade.asset}</span><span className={`font-mono font-bold text-xs ${trade.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{(trade.pnl >= 0 ? '+' : '-') + '$' + Math.abs(trade.pnl).toFixed(2)}</span></div><div className="flex gap-2 mb-1"><span className="text-[7px] sm:text-[8px] md:text-[9px] px-1.5 py-0.5 rounded bg-white/10 border border-white/5 uppercase opacity-70">{trade.strategy || 'Setup'}</span><span className="text-[7px] sm:text-[8px] md:text-[9px] px-1.5 py-0.5 rounded bg-white/10 border border-white/5 uppercase opacity-70">{trade.session || 'Session'}</span></div><p className="text-[9px] sm:text-[10px] md:text-xs opacity-60 leading-relaxed line-clamp-2">{trade.notes}</p></div></div>
+                            <div key={trade.id} className={`p-3 rounded-xl border flex gap-3 shrink-0 ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'}`}><div className={`w-1 rounded-full shrink-0 ${trade.pnl >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} /><div className="flex-1 min-w-0"><div className="flex justify-between items-center mb-1"><span className="font-bold text-xs">{trade.asset}</span><span className={`font-mono font-bold text-xs ${trade.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{(trade.pnl >= 0 ? '+' : '-') + '$' + Math.abs(trade.pnl).toFixed(2)}</span></div><div className="flex gap-2 mb-1"><span className="text-[8px] px-1.5 py-0.5 rounded bg-white/10 border border-white/5 uppercase opacity-70">{trade.strategy || 'Setup'}</span><span className="text-[8px] px-1.5 py-0.5 rounded bg-white/10 border border-white/5 uppercase opacity-70">{trade.session || 'Session'}</span></div><p className="text-[10px] opacity-60 leading-relaxed line-clamp-2">{trade.notes}</p></div></div>
                         ))
                     )}
                 </div>
@@ -688,7 +674,7 @@ const MacroCalendar: React.FC<{
 
     return (
         <div className="h-full flex flex-col min-h-0">
-            <div className="flex justify-between items-center mb-2 px-2 sm:px-3 md:px-4 shrink-0" style={{ minHeight: '2rem' }}>
+            <div className="flex justify-between items-center mb-2 px-1 shrink-0">
                 <h3 className="text-xs font-bold uppercase tracking-widest opacity-70 cursor-pointer hover:text-yellow-500" onClick={() => setViewMode(v => v === 'CALENDAR' ? 'MACRO' : 'CALENDAR')}>
                     {viewMode === 'MACRO' ? 'Market Cycles' : headerDateText}
                 </h3>
@@ -700,12 +686,12 @@ const MacroCalendar: React.FC<{
                    <div className="w-[1px] bg-white/10 mx-1"></div>
                    <div className="flex bg-black/5 dark:bg-white/5 rounded-lg p-0.5">
                        {['D','W','M','Y'].map(t => (
-                           <button key={t} onClick={() => { setTimeFilter(t as any); setViewMode('CALENDAR'); }} className={`px-2 py-0.5 text-[7px] sm:text-[8px] md:text-[9px] font-bold rounded ${timeFilter === t && viewMode === 'CALENDAR' ? 'bg-white dark:bg-stone-700 shadow-sm' : 'opacity-50'}`}>{t}</button>
+                           <button key={t} onClick={() => { setTimeFilter(t as any); setViewMode('CALENDAR'); }} className={`px-2 py-0.5 text-[8px] font-bold rounded ${timeFilter === t && viewMode === 'CALENDAR' ? 'bg-white dark:bg-stone-700 shadow-sm' : 'opacity-50'}`}>{t}</button>
                        ))}
                    </div>
                 </div>
             </div>
-            <div className="flex-1 min-h-0 min-w-0" style={{ touchAction: timeFilter === 'Y' ? 'none' : 'auto', display: 'flex', flexDirection: 'column' }}>
+            <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
                 {renderCurrentView()}
             </div>
         </div>
@@ -717,71 +703,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
   const { refreshEntries } = useTradeJournal(); // Get refreshEntries from context
   const savedTradeIdRef = useRef<string | null>(null); // Track saved trade ID
   const { isConnected: meccaConnected } = useOptimizedLivePrice('XAUUSD', { debounceMs: 50 });
-  const insightAnalyzerRef = useRef<GeminiSetupAnalyzerRef>(null);
-  const [isApiKeySet, setIsApiKeySet] = useState(false);
-  const [showHistoryPage, setShowHistoryPage] = useState(false);
-  // Modal state for history page - render directly here instead of through ref chain
-  const [showProModal, setShowProModal] = useState(false);
-  const [selectedAnalysis, setSelectedAnalysis] = useState<ProAnalysisResult | null>(null);
-  
-  // Device detection for responsive design
-  const deviceInfo = useDeviceDetection();
-  const isMobile = deviceInfo.isMobile || deviceInfo.viewportWidth < 1024; // Match lg breakpoint
-  const isTablet = deviceInfo.isTablet;
-  const isDesktop = deviceInfo.isDesktop && deviceInfo.viewportWidth >= 1024;
-  
-  // Reduced motion support for animations
-  const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // --- STATE & DATA ---
   // Animation state for Imperial Score
   const [animatedImperialScore, setAnimatedImperialScore] = useState(0);
   const [activeTab, setActiveTab] = useState('JOURNAL');
-  
-  // Track API key status (moved after activeTab declaration)
-  useEffect(() => {
-    const checkApiKeyStatus = () => {
-      if (insightAnalyzerRef.current) {
-        // Use the method instead of getter for more reliable checking
-        const currentStatus = insightAnalyzerRef.current.checkApiKeyStatus?.() ?? insightAnalyzerRef.current.isApiKeySet;
-        setIsApiKeySet(prev => {
-          if (prev !== currentStatus) {
-            console.log('[JournalXX] API key status changed:', prev, '->', currentStatus);
-          }
-          return currentStatus;
-        });
-      } else {
-        console.log('[JournalXX] insightAnalyzerRef.current is null');
-      }
-    };
-    checkApiKeyStatus();
-    // Check more frequently to catch API key changes immediately, especially when on INSIGHT tab
-    const interval = setInterval(checkApiKeyStatus, 50);
-    return () => clearInterval(interval);
-  }, [activeTab]);
-  
-  // Also check when tab changes to INSIGHT (in case API key was just set)
-  useEffect(() => {
-    if (activeTab === 'INSIGHT') {
-      const checkApiKeyStatus = () => {
-        if (insightAnalyzerRef.current) {
-          const currentStatus = insightAnalyzerRef.current.checkApiKeyStatus?.() ?? insightAnalyzerRef.current.isApiKeySet;
-          setIsApiKeySet(currentStatus);
-          console.log('[JournalXX] API key status checked after tab change:', currentStatus);
-        }
-      };
-      // Check immediately and after delays to catch state updates
-      checkApiKeyStatus();
-      const timeout1 = setTimeout(checkApiKeyStatus, 100);
-      const timeout2 = setTimeout(checkApiKeyStatus, 500);
-      const timeout3 = setTimeout(checkApiKeyStatus, 1000);
-      return () => {
-        clearTimeout(timeout1);
-        clearTimeout(timeout2);
-        clearTimeout(timeout3);
-      };
-    }
-  }, [activeTab]);
+  const [meccaMobileTab, setMeccaMobileTab] = useState<'chart' | 'economic' | 'analyze'>('chart');
   const [tiltMode, setTiltMode] = useState(false);
   const [viewState, setViewState] = useState<'FORM' | 'ANALYZING' | 'REVIEW'>('FORM');
   const [activeMobileSlide, setActiveMobileSlide] = useState(0);
@@ -921,7 +848,6 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
     }
 
     if (allowSwipe) {
-        if (activeTab === 'JOURNAL') {
         if (dy > minSwipeDistance) {
              // Max slides: 
              // MANUAL mode: 5 (Calendar, Performance, Log Entry, Trade Log, Trader DNA, Insights)
@@ -931,10 +857,6 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
              if (activeMobileSlide < maxSlides) setActiveMobileSlide(s => s + 1);
         } else if (dy < -minSwipeDistance) {
              if (activeMobileSlide > 0) setActiveMobileSlide(s => s - 1);
-            }
-        } else if (activeTab === 'MECCA') {
-            // MECCA tab swipe is handled by MeccaXXDashboard component
-            // This handler is called but MeccaXXDashboard manages its own slide state
         }
     }
   };
@@ -970,7 +892,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
   };
   const onWheel = (e: React.WheelEvent) => {
       if (wheelCooldown.current) return;
-      if (activeTab !== 'JOURNAL' && activeTab !== 'MECCA') return; // Only work in JOURNAL and MECCA tabs
+      if (activeTab !== 'JOURNAL') return; // Only work in JOURNAL tab
       
       const dy = e.deltaY;
       if (Math.abs(e.deltaX) > Math.abs(dy)) return;
@@ -1988,12 +1910,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
   // --- LOG ENTRY CONTENT ---
   const LogEntryContent = (
-      <div className={`flex flex-col relative z-20 transition-all duration-500 ${tiltMode ? 'pointer-events-none opacity-50' : ''} h-full`} style={{ overflow: 'hidden', minHeight: 0 }}>
+      <div className={`flex flex-col relative z-20 ${isMobileAnalysisMode ? 'h-full overflow-hidden' : 'overflow-visible'} transition-all duration-500 ${tiltMode ? 'pointer-events-none opacity-50' : ''} h-full`}>
              
             {/* --- HEADER --- */}
-             <div className="px-3 sm:px-4 md:px-5 pt-2 pb-4 shrink-0">
+             <div className="px-5 pt-2 pb-4 shrink-0">
                <div className="flex justify-between items-center">
-                    <h3 className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-70 flex items-center gap-1">
+                    <h3 className="text-[9px] font-bold uppercase tracking-widest opacity-70 flex items-center gap-1">
                         <span className="w-0.5 h-0.5 bg-yellow-500 dark:bg-bronze-500 rotate-45 rounded-[1px]"></span>
                         {editingId ? 'Edit Entry' : 'Log Entry'}
                     </h3>
@@ -2002,7 +1924,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                         <div className="flex items-center rounded-full border bg-[#1C1C1E] border-white/10 h-5 overflow-hidden">
                         <button 
                                 onClick={() => setEntryMode('SIMPLE')}
-                                className={`px-2 h-full flex items-center justify-center transition-all text-[7px] sm:text-[8px] md:text-[9px] font-semibold uppercase tracking-wide ${
+                                className={`px-2 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                     entryMode === 'SIMPLE'
                                         ? 'bg-stone-700 text-bronze-500'
                                         : 'text-slate-600 hover:text-slate-400'
@@ -2012,7 +1934,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                         </button>
                         <button 
                                 onClick={() => setEntryMode('ADVANCED')}
-                                className={`px-2 h-full flex items-center justify-center transition-all text-[7px] sm:text-[8px] md:text-[9px] font-semibold uppercase tracking-wide ${
+                                className={`px-2 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                     entryMode === 'ADVANCED'
                                         ? 'bg-stone-700 text-bronze-500'
                                         : 'text-slate-600 hover:text-slate-400'
@@ -2030,10 +1952,10 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                  <div className="flex flex-col animate-in fade-in duration-300 h-full min-h-0">
                      {/* SIMPLE MODE - Basic fields only */}
                      {entryMode === 'SIMPLE' ? (
-                         <div className="px-3 sm:px-4 md:px-5 pb-2 space-y-3 overflow-y-auto custom-scrollbar flex-1 flex flex-col" style={{ minHeight: 0, maxWidth: '100%', overflowX: 'hidden' }}>
+                         <div className="px-5 pb-2 space-y-3 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
                              {/* Date */}
-                             <div className="relative group shrink-0" style={{ maxWidth: '100%', minWidth: 0 }}>
-                                 <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Date</label>
+                             <div className="relative group shrink-0">
+                                 <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Date</label>
                                  <div className="absolute left-3 top-[28px] text-stone-500 dark:text-slate-500 pointer-events-none">
                                      <CalendarIcon className="w-3.5 h-3.5" />
                                  </div>
@@ -2041,26 +1963,24 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                      type="date"
                                      value={date}
                                      onChange={(e) => setDate(e.target.value)}
-                                     className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-9 pr-2 py-2.5 sm:py-3 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm transition-all [color-scheme:light] dark:[color-scheme:dark]"
-                                     style={{ maxWidth: '100%', boxSizing: 'border-box' }}
+                                     className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-9 pr-2 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm transition-all [color-scheme:light] dark:[color-scheme:dark]"
                                  />
                              </div>
 
                              {/* Asset & PnL */}
-                             <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5 shrink-0" style={{ maxWidth: '100%', minWidth: 0 }}>
-                                 <div style={{ maxWidth: '100%', minWidth: 0 }}>
-                                     <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Asset</label>
+                             <div className="grid grid-cols-2 gap-2.5 shrink-0">
+                                 <div>
+                                     <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Asset</label>
                                      <input 
                                          type="text" 
                                          value={asset} 
                                          onChange={(e) => setAsset(e.target.value)} 
                                          placeholder="BTCUSD" 
-                                         className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 sm:py-3 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600" 
-                                         style={{ maxWidth: '100%', boxSizing: 'border-box' }}
+                                         className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600" 
                                      />
                                  </div>
-                                 <div style={{ maxWidth: '100%', minWidth: 0 }}>
-                                     <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Profit / Loss ($)</label>
+                                 <div>
+                                     <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Profit / Loss ($)</label>
                                      <div className="relative">
                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 dark:text-slate-500 font-bold text-xs">$</span>
                                          <input 
@@ -2068,8 +1988,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                              value={pnl} 
                                              onChange={(e) => setPnl(e.target.value)} 
                                              placeholder="0.00" 
-                                             className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-7 pr-3 py-2.5 sm:py-3 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600 min-h-[44px] sm:min-h-[48px] ${Number(pnl) > 0 ? 'text-emerald-500' : Number(pnl) < 0 ? 'text-rose-500' : 'text-stone-900 dark:text-white'}`}
-                                             style={{ maxWidth: '100%', boxSizing: 'border-box' }}
+                                             className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-7 pr-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600 ${Number(pnl) > 0 ? 'text-emerald-500' : Number(pnl) < 0 ? 'text-rose-500' : 'text-stone-900 dark:text-white'}`} 
                                          />
                                      </div>
                                  </div>
@@ -2077,7 +1996,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                              {/* Notes */}
                              <div className="flex-col flex-1 min-h-[100px] flex shrink-0">
-                                 <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Strategy & Psychology Notes</label>
+                                 <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Strategy & Psychology Notes</label>
                                  <textarea 
                                      value={notes} 
                                      onChange={(e) => setNotes(e.target.value)} 
@@ -2088,7 +2007,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                              {/* Image Upload */}
                              <div className="shrink-0">
-                                 <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Chart Snapshot</label>
+                                 <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Chart Snapshot</label>
                                  <div 
                                      onClick={handleClick}
                                      onDragEnter={handleDragEnter}
@@ -2115,7 +2034,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                              <UploadIcon 
                                                  className={`relative z-10 w-5 h-5 ${isDragging ? 'text-yellow-600 dark:text-bronze-400 scale-110' : 'text-stone-400 dark:text-bronze-500'} transition-all duration-200 ${isDragging ? 'animate-pulse' : 'group-hover:scale-110'}`}
                                              />
-                                             <span className={`relative z-10 text-[9px] sm:text-[10px] md:text-xs font-bold ${isDragging ? 'text-yellow-700 dark:text-bronze-300' : 'text-stone-500 dark:text-bronze-500'} uppercase tracking-wide transition-colors`}>
+                                             <span className={`relative z-10 text-[10px] font-bold ${isDragging ? 'text-yellow-700 dark:text-bronze-300' : 'text-stone-500 dark:text-bronze-500'} uppercase tracking-wide transition-colors`}>
                                                  {isDragging ? '✨ Drop to upload (max 3)' : 'Click to upload chart'}
                                              </span>
                                          </>
@@ -2143,12 +2062,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                  ))}
                                              </div>
                                              {previewUrls.length < 3 && (
-                                                 <span className={`text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded ${isDragging ? 'text-yellow-700 dark:text-bronze-300 bg-yellow-100 dark:bg-bronze-900/30' : 'text-stone-500 dark:text-bronze-500 bg-stone-100 dark:bg-slate-800'} whitespace-nowrap transition-colors`}>
+                                                 <span className={`text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded ${isDragging ? 'text-yellow-700 dark:text-bronze-300 bg-yellow-100 dark:bg-bronze-900/30' : 'text-stone-500 dark:text-bronze-500 bg-stone-100 dark:bg-slate-800'} whitespace-nowrap transition-colors`}>
                                                      {previewUrls.length}/3
                                                  </span>
                                              )}
                                              {previewUrls.length >= 3 && (
-                                                 <span className={`text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded whitespace-nowrap`}>
+                                                 <span className={`text-[8px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded whitespace-nowrap`}>
                                                      MAX 3
                                                  </span>
                                              )}
@@ -2159,11 +2078,11 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                          </div>
                      ) : (
                          /* ADVANCED MODE - All fields */
-                     <div className="px-3 sm:px-4 md:px-3 sm:px-4 md:px-5 pb-2 space-y-2 sm:space-y-2.5 overflow-y-auto custom-scrollbar flex-1 flex flex-col" style={{ minHeight: 0, maxWidth: '100%', overflowX: 'hidden' }}>
+                     <div className="px-5 pb-2 space-y-2.5 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
                         
                         {/* Row 1: Date & Direction Mixed */}
-                        <div className="grid grid-cols-12 gap-1.5 sm:gap-2 md:gap-2.5 shrink-0" style={{ maxWidth: '100%', minWidth: 0 }}>
-                            <div className="col-span-6 relative group" style={{ maxWidth: '100%', minWidth: 0 }}>
+                        <div className="grid grid-cols-12 gap-2.5 shrink-0">
+                            <div className="col-span-7 relative group">
                                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 dark:text-slate-500 pointer-events-none">
                                     <CalendarIcon className="w-3.5 h-3.5" />
                                 </div>
@@ -2171,20 +2090,19 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                     type="date"
                                     value={date}
                                     onChange={(e) => setDate(e.target.value)}
-                                    className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-9 pr-2 py-2.5 sm:py-3 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm transition-all [color-scheme:light] dark:[color-scheme:dark]"
-                                    style={{ maxWidth: '100%', boxSizing: 'border-box', width: '100%' }}
+                                    className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-9 pr-2 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm transition-all [color-scheme:light] dark:[color-scheme:dark]"
                                 />
                             </div>
-                            <div className="col-span-6 flex bg-stone-100 dark:bg-white/5 p-1 rounded-xl" style={{ maxWidth: '100%', minWidth: 0 }}>
+                            <div className="col-span-5 flex bg-stone-100 dark:bg-white/5 p-1 rounded-xl">
                                 <button 
                                     onClick={() => setDirection('Long')}
-                                    className={`flex-1 rounded-lg text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-black uppercase transition-all ${direction === 'Long' ? 'bg-emerald-500 text-white shadow-sm' : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'}`}
+                                    className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all ${direction === 'Long' ? 'bg-emerald-500 text-white shadow-sm' : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'}`}
                                 >
                                     Long
                                 </button>
                                 <button 
                                     onClick={() => setDirection('Short')}
-                                    className={`flex-1 rounded-lg text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-black uppercase transition-all ${direction === 'Short' ? 'bg-rose-500 text-white shadow-sm' : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'}`}
+                                    className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all ${direction === 'Short' ? 'bg-rose-500 text-white shadow-sm' : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'}`}
                                 >
                                     Short
                                 </button>
@@ -2192,31 +2110,31 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                         </div>
 
                          {/* Row 2: Asset & PnL */}
-                         <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5 shrink-0" style={{ maxWidth: '100%', minWidth: 0 }}>
-                             <div style={{ maxWidth: '100%', minWidth: 0 }}>
-                                 <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Asset</label>
-                                 <input type="text" value={asset} onChange={(e) => setAsset(e.target.value)} placeholder="BTCUSD" className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 sm:py-3 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600" style={{ maxWidth: '100%', boxSizing: 'border-box' }} />
+                         <div className="grid grid-cols-2 gap-2.5 shrink-0">
+                             <div>
+                                 <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Asset</label>
+                                 <input type="text" value={asset} onChange={(e) => setAsset(e.target.value)} placeholder="BTCUSD" className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600" />
                              </div>
-                             <div style={{ maxWidth: '100%', minWidth: 0 }}>
-                                 <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">PnL</label>
+                             <div>
+                                 <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">PnL</label>
                                  <div className="relative">
                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 dark:text-slate-500 font-bold text-xs">$</span>
-                                     <input type="number" value={pnl} onChange={(e) => setPnl(e.target.value)} placeholder="0.00" className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-7 pr-3 py-2.5 sm:py-3 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600 ${Number(pnl) > 0 ? 'text-emerald-500' : Number(pnl) < 0 ? 'text-rose-500' : 'text-stone-900 dark:text-white'}`} style={{ maxWidth: '100%', boxSizing: 'border-box' }} />
+                                     <input type="number" value={pnl} onChange={(e) => setPnl(e.target.value)} placeholder="0.00" className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-7 pr-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600 ${Number(pnl) > 0 ? 'text-emerald-500' : Number(pnl) < 0 ? 'text-rose-500' : 'text-stone-900 dark:text-white'}`} />
                                  </div>
                              </div>
                          </div>
 
                          {/* Row 3: Strategy & Session */}
-                         <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5 shrink-0" style={{ maxWidth: '100%', minWidth: 0 }}>
-                             <div style={{ maxWidth: '100%', minWidth: 0 }}>
-                                 <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Strategy</label>
-                                     <select value={strategy} onChange={(e) => setStrategy(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 sm:py-3 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm ${strategy === STRATEGIES[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`} style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
+                         <div className="grid grid-cols-2 gap-2.5 shrink-0">
+                             <div>
+                                 <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Strategy</label>
+                                     <select value={strategy} onChange={(e) => setStrategy(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm ${strategy === STRATEGIES[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
                                     {STRATEGIES.map(s => <option key={s} value={s}>{s}</option>)}
                                  </select>
                              </div>
                              <div>
-                                 <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Session</label>
-                                     <select value={session} onChange={(e) => setSession(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 sm:py-3 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm ${session === SESSIONS[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
+                                 <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Session</label>
+                                     <select value={session} onChange={(e) => setSession(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm ${session === SESSIONS[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
                                     {SESSIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                  </select>
                              </div>
@@ -2224,21 +2142,21 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                          
                          {/* Row 4: Emotion */}
                          <div className="shrink-0">
-                             <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Emotion</label>
-                                 <select value={emotion} onChange={(e) => setEmotion(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-2 py-2.5 sm:py-3 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none shadow-sm ${emotion === EMOTIONS[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
+                             <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Emotion</label>
+                                 <select value={emotion} onChange={(e) => setEmotion(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-2 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none shadow-sm ${emotion === EMOTIONS[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
                                 {EMOTIONS.map(e => <option key={e} value={e}>{e}</option>)}
                              </select>
                          </div>
 
                          {/* Row 5: Did I follow my plan? */}
                          <div className="shrink-0">
-                             <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
+                             <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
                                  Did I follow my plan?
                              </label>
                                  <div className="flex items-center rounded-full border bg-[#1C1C1E] border-white/10 h-6 overflow-hidden">
                                  <button 
                                      onClick={() => setFollowedPlan(true)}
-                                         className={`flex-1 h-full flex items-center justify-center transition-all text-[7px] sm:text-[8px] md:text-[9px] font-semibold uppercase tracking-wide ${
+                                         className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                          followedPlan === true 
                                                  ? 'bg-emerald-500 text-white' 
                                                  : 'text-slate-600 hover:text-slate-400'
@@ -2248,7 +2166,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                  </button>
                                  <button 
                                      onClick={() => setFollowedPlan(false)}
-                                         className={`flex-1 h-full flex items-center justify-center transition-all text-[7px] sm:text-[8px] md:text-[9px] font-semibold uppercase tracking-wide ${
+                                         className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                          followedPlan === false 
                                                  ? 'bg-rose-500 text-white' 
                                                  : 'text-slate-600 hover:text-slate-400'
@@ -2261,13 +2179,13 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                          {/* Row 6: Revenge Trade? (for testing Patience) */}
                          <div className="shrink-0">
-                             <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
+                             <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
                                  Revenge Trade? (Test Patience)
                              </label>
                                  <div className="flex items-center rounded-full border bg-[#1C1C1E] border-white/10 h-6 overflow-hidden">
                                  <button 
                                      onClick={() => setIsRevengeTrade(true)}
-                                         className={`flex-1 h-full flex items-center justify-center transition-all text-[7px] sm:text-[8px] md:text-[9px] font-semibold uppercase tracking-wide ${
+                                         className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                          isRevengeTrade === true 
                                                  ? 'bg-orange-500 text-white' 
                                                  : 'text-slate-600 hover:text-slate-400'
@@ -2277,7 +2195,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                  </button>
                                  <button 
                                      onClick={() => setIsRevengeTrade(false)}
-                                         className={`flex-1 h-full flex items-center justify-center transition-all text-[7px] sm:text-[8px] md:text-[9px] font-semibold uppercase tracking-wide ${
+                                         className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                          isRevengeTrade === false 
                                                  ? 'bg-stone-600 text-white' 
                                                  : 'text-slate-600 hover:text-slate-400'
@@ -2290,7 +2208,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                         {/* Row 7: Notes (Swapped) */}
                         <div className="flex-col flex-1 min-h-[60px] flex mb-1">
-                           <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Notes</label>
+                           <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Notes</label>
                            <textarea 
                                value={notes} 
                                onChange={(e) => setNotes(e.target.value)} 
@@ -2328,7 +2246,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                         <UploadIcon 
                                             className={`relative z-10 w-5 h-5 ${isDragging ? 'text-yellow-600 dark:text-bronze-400 scale-110' : 'text-stone-400 dark:text-bronze-500'} transition-all duration-200 ${isDragging ? 'animate-pulse' : 'group-hover:scale-110'}`}
                                         />
-                                        <span className={`relative z-10 text-[9px] sm:text-[10px] md:text-xs font-bold ${isDragging ? 'text-yellow-700 dark:text-bronze-300' : 'text-stone-500 dark:text-bronze-500'} uppercase tracking-wide transition-colors`}>
+                                        <span className={`relative z-10 text-[10px] font-bold ${isDragging ? 'text-yellow-700 dark:text-bronze-300' : 'text-stone-500 dark:text-bronze-500'} uppercase tracking-wide transition-colors`}>
                                             {isDragging ? '✨ Drop to upload (max 3)' : '📸 Drag & drop or click to upload (max 3)'}
                                         </span>
                                     </>
@@ -2356,12 +2274,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                             ))}
                                         </div>
                                         {previewUrls.length < 3 && (
-                                            <span className={`text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded ${isDragging ? 'text-yellow-700 dark:text-bronze-300 bg-yellow-100 dark:bg-bronze-900/30' : 'text-stone-500 dark:text-bronze-500 bg-stone-100 dark:bg-slate-800'} whitespace-nowrap transition-colors`}>
+                                            <span className={`text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded ${isDragging ? 'text-yellow-700 dark:text-bronze-300 bg-yellow-100 dark:bg-bronze-900/30' : 'text-stone-500 dark:text-bronze-500 bg-stone-100 dark:bg-slate-800'} whitespace-nowrap transition-colors`}>
                                                 {previewUrls.length}/3
                                             </span>
                                         )}
                                         {previewUrls.length >= 3 && (
-                                            <span className={`text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded whitespace-nowrap`}>
+                                            <span className={`text-[8px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded whitespace-nowrap`}>
                                                 MAX 3
                                             </span>
                                         )}
@@ -2388,7 +2306,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                         <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40 p-10">
                             <NotebookIcon className="w-12 h-12 mb-3" />
                             <h4 className="font-bold text-sm uppercase tracking-widest">No Trade Logs</h4>
-                            <p className="text-[9px] sm:text-[10px] md:text-xs max-w-[150px] leading-relaxed mt-2">Start journaling your trades to see your history here.</p>
+                            <p className="text-[10px] max-w-[150px] leading-relaxed mt-2">Start journaling your trades to see your history here.</p>
                         </div>
                     ) : (
                        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6 pt-4 space-y-3" style={{ touchAction: 'pan-y' }}>
@@ -2423,13 +2341,13 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                             <div className="flex gap-2">
                                                 <button 
                                                     onClick={(e) => { e.stopPropagation(); confirmDelete(trade.id); }}
-                                                    className="px-3 py-1.5 bg-rose-500 text-white text-[9px] sm:text-[10px] md:text-xs font-bold rounded-lg hover:bg-rose-600 transition-colors shadow-lg uppercase"
+                                                    className="px-3 py-1.5 bg-rose-500 text-white text-[10px] font-bold rounded-lg hover:bg-rose-600 transition-colors shadow-lg uppercase"
                                                 >
                                                     Yes
                                                 </button>
                                                 <button 
                                                     onClick={(e) => { e.stopPropagation(); setDeleteConfirmationId(null); }}
-                                                    className="px-3 py-1.5 bg-white dark:bg-slate-800 text-stone-500 dark:text-slate-400 text-[9px] sm:text-[10px] md:text-xs font-bold rounded-lg border border-stone-200 dark:border-slate-700 hover:bg-stone-50 transition-colors uppercase"
+                                                    className="px-3 py-1.5 bg-white dark:bg-slate-800 text-stone-500 dark:text-slate-400 text-[10px] font-bold rounded-lg border border-stone-200 dark:border-slate-700 hover:bg-stone-50 transition-colors uppercase"
                                                 >
                                                     No
                                                 </button>
@@ -2458,9 +2376,9 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                         <div className={`p-1 rounded border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-stone-200 border-stone-300'}`}>
                                                             <SparklesIcon className={`w-2.5 h-2.5 ${isDarkMode ? 'text-bronze-500' : 'text-yellow-500'}`} />
                                                  </div>
-                                                        <span className={`text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>AI Mentor Insight</span>
+                                                        <span className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>AI Mentor Insight</span>
                                                     </div>
-                                                    <div className={`text-[9px] sm:text-[10px] md:text-xs font-mono opacity-0 group-hover/insight:opacity-100 transition-opacity ${isDarkMode ? 'text-slate-600' : 'text-stone-400'}`}>
+                                                    <div className={`text-[10px] font-mono opacity-0 group-hover/insight:opacity-100 transition-opacity ${isDarkMode ? 'text-slate-600' : 'text-stone-400'}`}>
                                                         {expandedInsights.has(trade.id) ? 'COLLAPSE' : 'EXPAND'}
                                                     </div>
                                                 </div>
@@ -2507,7 +2425,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
              {/* Footer Actions */}
              {logMode === 'ENTRY' && (
-                <div className="mt-auto shrink-0 px-3 sm:px-4 md:px-5 pb-5 pt-2 border-t border-transparent">
+                <div className="mt-auto shrink-0 px-5 pb-5 pt-2 border-t border-transparent">
                     {viewState === 'FORM' && (
                         <button
                             onClick={handleAnalyze}
@@ -2551,15 +2469,10 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
       style={{
         position: 'fixed',
         inset: 0,
-        height: '100dvh', // Use dynamic viewport height for proper iOS safe area handling
       }}
     >
       <div 
         className={`journal-xx-safe-area w-full h-full ${isDarkMode ? 'text-slate-200' : 'text-stone-800'} font-sans flex flex-col relative overflow-hidden`}
-        style={{
-          height: '100%', // Full height of parent
-          paddingBottom: 0, // Remove bottom padding - handled by bottom nav
-        }}
       >
         {/* Modal root - MECCA/INSIGHT modals render here to show inside History page with brain pulsing behind */}
         <div id="journal-xx-modal-root" className="fixed inset-0 z-[9998] pointer-events-none [&>*]:pointer-events-auto" aria-hidden="true" />
@@ -2571,10 +2484,8 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
               activeTab={activeTab}
               onTabChange={handleTabChange}
               showMobileTabs={false}
-              onApiKeySetup={() => {
-                insightAnalyzerRef.current?.showApiKeySetup();
-              }}
-              isApiKeySet={isApiKeySet}
+              mobileActiveTab={meccaMobileTab}
+              onMobileTabChange={setMeccaMobileTab}
             />
           </div>
         ) : (
@@ -2623,59 +2534,22 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                   )}
                 </h1>
                 {activeTab === 'JOURNAL' && (
-                  <span className={`text-[7px] sm:text-[8px] md:text-[9px] md:text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-medium tracking-wider mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>
+                  <span className={`text-[8px] md:text-[9px] font-medium tracking-wider mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>
                     {journalMode === 'AUTO' ? 'AUTO SYNC' : 'MANUAL'}
                   </span>
                 )}
                 {activeTab === 'CALCU' && (
-                  <span className={`text-[7px] sm:text-[8px] md:text-[9px] md:text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-medium tracking-wider mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>
+                  <span className={`text-[8px] md:text-[9px] font-medium tracking-wider mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>
                     RISK CALCULATOR
                   </span>
                 )}
                 {activeTab === 'INSIGHT' && (
-                  <span className={`text-[7px] sm:text-[8px] md:text-[9px] md:text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-medium tracking-wider mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>
+                  <span className={`text-[8px] md:text-[9px] font-medium tracking-wider mt-0.5 ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>
                     AI ANALYSIS
                   </span>
                 )}
               </div>
             </div>
-
-            {/* Right: API KEY and HISTORY buttons (always visible on INSIGHT tab) */}
-            {activeTab === 'INSIGHT' && (
-              <div className="flex items-center gap-2 ml-auto z-10">
-                {/* History Icon */}
-                <button
-                  onClick={() => {
-                    console.log('[JournalXX] History icon clicked');
-                    setShowHistoryPage(true);
-                  }}
-                  className="p-2 transition-all rounded-lg hover:opacity-80 cursor-pointer hover:bg-white/5"
-                  style={{ 
-                    color: '#22c55e',
-                  }}
-                  title="View Analysis History"
-                >
-                  <History className="w-4 h-4" />
-                </button>
-                {/* API Key Icon */}
-                <button
-                  onClick={() => {
-                    console.log('[JournalXX] Key icon clicked, isApiKeySet:', isApiKeySet, 'insightAnalyzerRef.current:', insightAnalyzerRef.current);
-                      insightAnalyzerRef.current?.showApiKeySetup();
-                  }}
-                  className="p-2 transition-all rounded-lg hover:opacity-80 cursor-pointer hover:bg-white/5 touch-manipulation"
-                  style={{ 
-                    color: isApiKeySet ? '#22c55e' : '#9ca3af',
-                    minWidth: '44px',
-                    minHeight: '44px',
-                    WebkitTapHighlightColor: 'transparent',
-                  }}
-                  title={isApiKeySet ? 'Change API Key' : 'Setup Gemini API Key'}
-                >
-                  <Key className="w-4 h-4" />
-                </button>
-              </div>
-            )}
 
             {/* Center: Desktop Navigation with Glassmorphism */}
             <nav 
@@ -2725,7 +2599,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                   <div className={`flex items-center gap-3 px-4 py-2 rounded-xl border shadow-lg ${isDarkMode ? 'bg-slate-900/50 border-white/5 shadow-black/20' : 'bg-[#F5F5F0]/80 border-stone-200 shadow-stone-200/50'}`}>
                     <div className={`h-6 w-1 rounded-full ${isDarkMode ? 'bg-bronze-500' : 'bg-yellow-500'}`}></div>
                     <div className="flex flex-col justify-center">
-                      <span className={`text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-widest leading-tight ${isDarkMode ? 'text-dirty-white/60' : 'text-stone-500'}`}>Net PnL</span>
+                      <span className={`text-[8px] font-bold uppercase tracking-widest leading-tight ${isDarkMode ? 'text-dirty-white/60' : 'text-stone-500'}`}>Net PnL</span>
                       <div className={`${pnlSizeClass} font-bold font-sans tracking-wide leading-none mt-0.5 ${
                         totalPnL >= 0 ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-500') : (isDarkMode ? 'text-rose-400' : 'text-rose-500')
                       }`}>
@@ -2740,7 +2614,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
         )}
 
              {/* === MOBILE SWIPEABLE VIEW (Visible on Mobile) === */}
-             <div className="lg:hidden relative overflow-hidden" 
+             <div className="lg:hidden flex-1 relative overflow-hidden" 
                   onTouchStart={onTouchStart} 
                   onTouchMove={onTouchMove} 
                   onTouchEnd={onTouchEnd} 
@@ -2748,33 +2622,22 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                   onMouseUp={onMouseUp}
                   onMouseLeave={onMouseLeave}
                   onWheel={onWheel}
-                  style={{ 
-                    touchAction: 'none',
-                    height: 'calc(100% - 4rem - max(5.5rem, calc(5.5rem + env(safe-area-inset-bottom, 0px))))',
-                    maxHeight: 'calc(100% - 4rem - max(5.5rem, calc(5.5rem + env(safe-area-inset-bottom, 0px))))',
-                    minHeight: 0,
-                  }}
+                  style={{ touchAction: 'none' }}
              >
                 {/* The vertical slider track for JOURNAL tab content */}
                 {activeTab === 'JOURNAL' && journalMode === 'MANUAL' && (
                     <>
                         <div 
-                           className="w-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
-                           style={{ 
-                             transform: `translateY(-${activeMobileSlide * 100}%)`,
-                             height: '100%',
-                             display: 'flex',
-                             flexDirection: 'column'
-                           }}
+                           className="w-full h-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
+                           style={{ transform: `translateY(-${activeMobileSlide * 100}%)` }}
                         >
                             {/* Slide 0: Calendar */}
-                             <div className="w-full flex-shrink-0 pt-3 sm:pt-4 pb-3 sm:pb-4 flex flex-col" style={{ height: '100%', minHeight: 0 }}>
+                             <div className="w-full h-full p-4 pb-24 flex flex-col">
                                 {/* Price Ticker above Calendar */}
-                                <div className="shrink-0 mb-2 px-3 sm:px-4">
+                                <div className="shrink-0 mb-2">
                                     <NewsTicker />
                                 </div>
-                                <SpotlightCard className="w-full" isDarkMode={isDarkMode} tilt={false} style={{ height: 'calc(100% - 2.5rem)', minHeight: 0, maxHeight: 'calc(100% - 2.5rem)' }}>
-                                    <div className="h-full w-full flex flex-col min-h-0" style={{ paddingBottom: '1rem' }}>
+                                <SpotlightCard className="flex-1 w-full" isDarkMode={isDarkMode} tilt={false}>
                                     <MacroCalendar 
                                         isDarkMode={isDarkMode} 
                                         trades={filteredTrades}
@@ -2783,17 +2646,16 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                         viewDate={calendarViewDate}
                                         setViewDate={setCalendarViewDate}
                                     />
-                                    </div>
                                 </SpotlightCard>
                              </div>
 
                              {/* Slide 1: Performance Curve */}
-                             <div className="w-full flex-shrink-0 pt-3 sm:pt-4 pb-3 sm:pb-4 flex flex-col" style={{ height: '100%', minHeight: 0 }}>
-                                <SpotlightCard className="w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true} style={{ height: '100%', minHeight: 0 }}>
-                                    <div className="flex flex-col h-full px-2 sm:px-3 md:px-4 pb-5" style={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                             <div className="w-full h-full p-4 pb-24">
+                                <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                    <div className="flex flex-col h-full px-5 pb-5 overflow-y-auto">
                                         {/* Header - Same as Calendar */}
                                         <div className="flex justify-between items-center pt-5 pb-4 px-1 shrink-0">
-                                            <h3 className="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest opacity-70">
+                                            <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">
                                                 {(() => {
                                                     if (perfCurveTimeFilter === 'Y') return perfCurveViewDate.getFullYear().toString();
                                                     if (perfCurveTimeFilter === 'W') {
@@ -2816,7 +2678,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                         else if (perfCurveTimeFilter === 'W') newDate.setDate(newDate.getDate() - 7);
                                                         else newDate.setDate(newDate.getDate() - 1);
                                                         setPerfCurveViewDate(newDate);
-                                                    }} className="p-1.5 sm:p-2 hover:bg-white/10 rounded min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center"><ArrowRightIcon className="w-3 h-3 sm:w-4 sm:h-4 rotate-180" /></button>
+                                                    }} className="p-1 hover:bg-white/10 rounded"><ArrowRightIcon className="w-3 h-3 rotate-180" /></button>
                                                     <button onClick={() => {
                                                         const newDate = new Date(perfCurveViewDate);
                                                         if (perfCurveTimeFilter === 'Y') newDate.setFullYear(newDate.getFullYear() + 1);
@@ -2824,12 +2686,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                         else if (perfCurveTimeFilter === 'W') newDate.setDate(newDate.getDate() + 7);
                                                         else newDate.setDate(newDate.getDate() + 1);
                                                         setPerfCurveViewDate(newDate);
-                                                    }} className="p-1.5 sm:p-2 hover:bg-white/10 rounded min-h-[36px] sm:min-h-[40px] min-w-[36px] sm:min-w-[40px] flex items-center justify-center"><ArrowRightIcon className="w-3 h-3 sm:w-4 sm:h-4" /></button>
+                                                    }} className="p-1 hover:bg-white/10 rounded"><ArrowRightIcon className="w-3 h-3" /></button>
                                                 </div>
                                                 <div className="w-[1px] bg-white/10 mx-1"></div>
                                                 <div className="flex bg-black/5 dark:bg-white/5 rounded-lg p-0.5">
                                                     {['D','W','M','Y'].map(t => (
-                                                        <button key={t} onClick={() => setPerfCurveTimeFilter(t as any)} className={`px-1.5 sm:px-2 py-0.5 text-[7px] sm:text-[8px] md:text-[9px] md:text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold rounded min-h-[32px] sm:min-h-[36px] ${perfCurveTimeFilter === t ? 'bg-white dark:bg-stone-700 shadow-sm' : 'opacity-50'}`}>{t}</button>
+                                                        <button key={t} onClick={() => setPerfCurveTimeFilter(t as any)} className={`px-2 py-0.5 text-[8px] font-bold rounded ${perfCurveTimeFilter === t ? 'bg-white dark:bg-stone-700 shadow-sm' : 'opacity-50'}`}>{t}</button>
                                                     ))}
                                                 </div>
                                             </div>
@@ -2869,9 +2731,9 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                 <div className="flex-1 min-h-0">
                                                     {perfFilteredTrades.length === 0 ? (
                                                         <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
-                                                            <TrendingUpIcon className="w-10 h-10 sm:w-12 sm:h-12 mb-3" />
-                                                            <h4 className="font-bold text-xs sm:text-sm md:text-base uppercase tracking-widest">No Performance Data</h4>
-                                                            <p className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs max-w-[150px] leading-relaxed mt-2">No trades for this period.</p>
+                                                            <TrendingUpIcon className="w-12 h-12 mb-3" />
+                                                            <h4 className="font-bold text-sm uppercase tracking-widest">No Performance Data</h4>
+                                                            <p className="text-[10px] max-w-[150px] leading-relaxed mt-2">No trades for this period.</p>
                                                         </div>
                                                     ) : (
                                                         <ResponsiveContainer width="100%" height="100%">
@@ -2905,12 +2767,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                 <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"} />
                                                                 <XAxis 
                                                                     dataKey="index" 
-                                                                    tick={{ fontSize: isMobile ? 9 : isTablet ? 10 : 11, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
+                                                                    tick={{ fontSize: 10, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
                                                                     axisLine={{ stroke: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
                                                                     tickLine={false}
                                                                 />
                                                                 <YAxis 
-                                                                    tick={{ fontSize: isMobile ? 9 : isTablet ? 10 : 11, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
+                                                                    tick={{ fontSize: 10, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
                                                                     axisLine={{ stroke: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
                                                                     tickLine={false}
                                                                     tickFormatter={(value) => `$${value}`}
@@ -2922,9 +2784,9 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                         borderRadius: '12px',
                                                                         border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
                                                                         boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                                                                        padding: isMobile ? '6px 10px' : '8px 12px'
+                                                                        padding: '8px 12px'
                                                                     }}
-                                                                    labelStyle={{ color: isDarkMode ? '#e4e4e7' : '#18181b', fontSize: isMobile ? '10px' : isTablet ? '11px' : '12px', fontWeight: 'bold' }}
+                                                                    labelStyle={{ color: isDarkMode ? '#e4e4e7' : '#18181b', fontSize: '11px', fontWeight: 'bold' }}
                                                                     formatter={(value: number, name: string, props: any) => {
                                                                         if (name === 'pnl') {
                                                                             return [`$${value.toFixed(2)}`, 'Cumulative P&L'];
@@ -2988,23 +2850,23 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                             return (
                                                 <div className={`grid grid-cols-4 gap-2 pt-4 mt-auto shrink-0 border-t ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
                                                     <div className="text-center">
-                                                        <p className={`text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Trades</p>
+                                                        <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Trades</p>
                                                         <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>{perfFilteredTrades.length}</p>
                                                     </div>
                                                     <div className="text-center">
-                                                        <p className={`text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Win Rate</p>
+                                                        <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Win Rate</p>
                                                         <p className={`text-sm font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
                                                             {((perfFilteredTrades.filter(t => t.pnl > 0).length / perfFilteredTrades.length) * 100).toFixed(0)}%
                                                         </p>
                                                     </div>
                                                     <div className="text-center">
-                                                        <p className={`text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Best</p>
+                                                        <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Best</p>
                                                         <p className="text-sm font-bold text-emerald-500">
                                                             +${Math.max(...perfFilteredTrades.map(t => t.pnl), 0).toFixed(0)}
                                                         </p>
                                                     </div>
                                                     <div className="text-center">
-                                                        <p className={`text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Worst</p>
+                                                        <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Worst</p>
                                                         <p className="text-sm font-bold text-rose-500">
                                                             ${Math.min(...perfFilteredTrades.map(t => t.pnl), 0).toFixed(0)}
                                                         </p>
@@ -3018,17 +2880,17 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                              {/* Slide 2: Log Entry - Only show in MANUAL mode */}
                              {journalMode === 'MANUAL' ? (
-                             <div className="w-full flex-shrink-0 pt-3 sm:pt-4 pb-3 sm:pb-4 flex flex-col" style={{ height: '100%', minHeight: 0 }}>
-                                <SpotlightCard className="w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true} style={{ height: '100%', minHeight: 0 }}>
-                                        {LogEntryContent}
+                             <div className="w-full h-full p-4 pb-24">
+                                <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                    {LogEntryContent}
                                 </SpotlightCard>
                              </div>
                              ) : (
-                                 <div className="w-full flex-shrink-0 pt-3 sm:pt-4 pb-3 sm:pb-4 flex flex-col" style={{ height: '100%', minHeight: 0 }}>
-                                    <SpotlightCard className="w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true} style={{ height: '100%', minHeight: 0 }}>
-                                        <div className="flex flex-col items-center justify-center h-full text-center p-4 sm:p-6 md:p-8">
-                                            <p className="text-base sm:text-lg md:text-xl font-semibold mb-2 text-foreground">Auto Journaling Active</p>
-                                            <p className="text-xs sm:text-sm md:text-base text-foreground/70">Trades are synced automatically from your broker</p>
+                                 <div className="w-full h-full p-4 pb-24">
+                                    <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                        <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                                            <p className="text-lg font-semibold mb-2 text-foreground">Auto Journaling Active</p>
+                                            <p className="text-sm text-foreground/70">Trades are synced automatically from your broker</p>
                                         </div>
                                     </SpotlightCard>
                                  </div>
@@ -3036,23 +2898,23 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                              {/* Slide 3: Trade Log - Only show in MANUAL mode */}
                              {journalMode === 'MANUAL' ? (
-                                 <div className="w-full flex-shrink-0 pt-3 sm:pt-4 pb-3 sm:pb-4 flex flex-col" style={{ height: '100%', minHeight: 0 }}>
-                                    <SpotlightCard className="w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true} style={{ height: '100%', minHeight: 0 }}>
+                                 <div className="w-full h-full p-4 pb-24">
+                                    <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
                                         <div className="flex flex-col h-full overflow-hidden">
                                             {/* Header with Trade Log title and count badge */}
-                                            <div className={`shrink-0 flex items-center justify-between px-2 sm:px-3 md:px-4 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
-                                                <h3 className={`text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>TRADE LOG</h3>
-                                                <span className={`text-[9px] sm:text-xs md:text-sm font-bold px-1.5 sm:px-2 py-0.5 rounded-xl border ${isDarkMode ? 'bg-bronze-500/10 text-dirty-white border-bronze-500/20' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}>{sortedTrades.length}</span>
+                                            <div className={`shrink-0 flex items-center justify-between px-6 pt-5 pb-4 border-b ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
+                                                <h3 className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>TRADE LOG</h3>
+                                                <span className={`text-xs font-bold px-2 py-0.5 rounded-xl border ${isDarkMode ? 'bg-bronze-500/10 text-dirty-white border-bronze-500/20' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}`}>{sortedTrades.length}</span>
                                             </div>
                                             
                                             {sortedTrades.length === 0 ? (
-                                                <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40 p-6 sm:p-8 md:p-10">
-                                                    <NotebookIcon className="w-10 h-10 sm:w-12 sm:h-12 mb-3" />
-                                                    <h4 className="font-bold text-xs sm:text-sm md:text-base uppercase tracking-widest">No Trade Logs</h4>
-                                                    <p className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs max-w-[150px] leading-relaxed mt-2">Start journaling your trades to see your history here.</p>
+                                                <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40 p-10">
+                                                    <NotebookIcon className="w-12 h-12 mb-3" />
+                                                    <h4 className="font-bold text-sm uppercase tracking-widest">No Trade Logs</h4>
+                                                    <p className="text-[10px] max-w-[150px] leading-relaxed mt-2">Start journaling your trades to see your history here.</p>
                                                 </div>
                                             ) : (
-                                               <div className="flex-1 overflow-y-auto custom-scrollbar px-2 sm:px-3 md:px-4 pb-4 sm:pb-5 md:pb-6 pt-3 sm:pt-4 space-y-2 sm:space-y-3" style={{ touchAction: 'pan-y' }}>
+                                               <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6 pt-4 space-y-3" style={{ touchAction: 'pan-y' }}>
                                                     {sortedTrades.map(trade => (
                                                         <div 
                                                            key={trade.id}
@@ -3061,16 +2923,16 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                         >
                                                             {/* Edit/Delete Overlay */}
                                                             {activeHistoryId === trade.id && !deleteConfirmationId && (
-                                                                <div className="absolute inset-0 z-10 bg-white/80 dark:bg-black/80 backdrop-blur-sm rounded-xl flex items-center justify-center gap-2 sm:gap-3 animate-in fade-in duration-200">
+                                                                <div className="absolute inset-0 z-10 bg-white/80 dark:bg-black/80 backdrop-blur-sm rounded-xl flex items-center justify-center gap-3 animate-in fade-in duration-200">
                                                                     <button 
                                                                         onClick={(e) => { e.stopPropagation(); handleEditHistoryItem(trade); }}
-                                                                        className="px-3 sm:px-4 py-2 bg-yellow-500 dark:bg-bronze-500 text-black text-[10px] sm:text-xs md:text-sm font-bold rounded-lg shadow-lg hover:bg-yellow-400 dark:hover:bg-bronze-400 transition-colors uppercase tracking-wider min-h-[44px] sm:min-h-[48px]"
+                                                                        className="px-4 py-2 bg-yellow-500 dark:bg-bronze-500 text-black text-xs font-bold rounded-lg shadow-lg hover:bg-yellow-400 dark:hover:bg-bronze-400 transition-colors uppercase tracking-wider"
                                                                     >
                                                                         Edit
                                                                     </button>
                                                                     <button 
                                                                         onClick={(e) => { e.stopPropagation(); setDeleteConfirmationId(trade.id); }}
-                                                                        className="px-3 sm:px-4 py-2 bg-white dark:bg-slate-800 text-rose-500 text-[10px] sm:text-xs md:text-sm font-bold rounded-lg border border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors uppercase tracking-wider min-h-[44px] sm:min-h-[48px]"
+                                                                        className="px-4 py-2 bg-white dark:bg-slate-800 text-rose-500 text-xs font-bold rounded-lg border border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors uppercase tracking-wider"
                                                                     >
                                                                         Delete
                                                                     </button>
@@ -3081,18 +2943,18 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                 <div className="flex items-start justify-between gap-3">
                                                                     <div className="flex-1 min-w-0">
                                                                         <div className="flex items-center gap-2 mb-1">
-                                                                            <span className={`text-xs sm:text-sm md:text-base font-black ${isDarkMode ? 'text-white' : 'text-stone-600'}`}>{trade.asset}</span>
-                                                                            <span className={`text-xs sm:text-sm md:text-base font-mono font-bold ${trade.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                            <span className={`text-sm font-black ${isDarkMode ? 'text-white' : 'text-stone-600'}`}>{trade.asset}</span>
+                                                                            <span className={`text-sm font-mono font-bold ${trade.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                                                                 {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
                                                                             </span>
                                                                         </div>
-                                                                        <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs text-stone-400 dark:text-slate-600">
+                                                                        <span className="text-[10px] text-stone-400 dark:text-slate-600">
                                                                             {new Date(trade.date).toLocaleDateString()}
                                                                         </span>
                                                                     </div>
                                                                 </div>
                                                                 {trade.notes && (
-                                                                    <p className="text-[9px] sm:text-[10px] md:text-[11px] lg:text-xs text-stone-500 dark:text-slate-500 line-clamp-2 leading-relaxed">{trade.notes}</p>
+                                                                    <p className="text-[11px] text-stone-500 dark:text-slate-500 line-clamp-2 leading-relaxed">{trade.notes}</p>
                                                                 )}
                                                                 
                                                                 {/* AI Mentor Insight - Mobile Trade Log */}
@@ -3105,9 +2967,9 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                                 <div className={`p-1 rounded border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-stone-200 border-stone-300'}`}>
                                                                                     <SparklesIcon className={`w-2.5 h-2.5 ${isDarkMode ? 'text-bronze-500' : 'text-yellow-500'}`} />
                                                                                 </div>
-                                                                                <span className={`text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>AI Mentor Insight</span>
+                                                                                <span className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>AI Mentor Insight</span>
                                                                             </div>
-                                                                            <p className={`text-[9px] sm:text-[10px] md:text-[11px] lg:text-xs leading-relaxed font-mono opacity-90 ${expandedInsights.has(trade.id) ? '' : 'line-clamp-2'} ${isDarkMode ? 'text-slate-300' : 'text-stone-600'}`}>
+                                                                            <p className={`text-[11px] leading-relaxed font-mono opacity-90 ${expandedInsights.has(trade.id) ? '' : 'line-clamp-2'} ${isDarkMode ? 'text-slate-300' : 'text-stone-600'}`}>
                                                                                 {trade.aiFeedback.replace(/[#*]/g, '')}
                                                                             </p>
                                                                         </div>
@@ -3116,18 +2978,18 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                             </div>
                                                             {/* Delete Confirmation */}
                                                             {deleteConfirmationId === trade.id && (
-                                                                <div className="absolute inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-sm z-20 flex items-center justify-center gap-2 sm:gap-3 rounded-xl">
-                                                                    <p className="text-[10px] sm:text-xs md:text-sm font-bold text-white mb-2 absolute top-4">Delete this trade?</p>
-                                                                    <div className="flex gap-2 sm:gap-3">
+                                                                <div className="absolute inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-sm z-20 flex items-center justify-center gap-3 rounded-xl">
+                                                                    <p className="text-xs font-bold text-white mb-2 absolute top-4">Delete this trade?</p>
+                                                                    <div className="flex gap-3">
                                                                         <button 
                                                                             onClick={(e) => { e.stopPropagation(); confirmDelete(trade.id); }}
-                                                                            className="px-3 sm:px-4 py-2 bg-rose-500 text-white rounded-lg font-bold text-[10px] sm:text-xs md:text-sm uppercase tracking-wider hover:bg-rose-600 transition-colors min-h-[44px] sm:min-h-[48px]"
+                                                                            className="px-4 py-2 bg-rose-500 text-white rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-rose-600 transition-colors"
                                                                         >
                                                                             Yes
                                                                         </button>
                                                                         <button 
                                                                             onClick={(e) => { e.stopPropagation(); setDeleteConfirmationId(null); }}
-                                                                            className="px-3 sm:px-4 py-2 bg-stone-500 text-white rounded-lg font-bold text-[10px] sm:text-xs md:text-sm uppercase tracking-wider hover:bg-stone-600 transition-colors min-h-[44px] sm:min-h-[48px]"
+                                                                            className="px-4 py-2 bg-stone-500 text-white rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-stone-600 transition-colors"
                                                                         >
                                                                             No
                                                                         </button>
@@ -3142,20 +3004,20 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                     </SpotlightCard>
                                  </div>
                              ) : (
-                                 <div className="w-full flex-shrink-0 pt-3 sm:pt-4 pb-3 sm:pb-4 flex flex-col" style={{ height: '100%', minHeight: 0 }}>
-                                    <SpotlightCard className="w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true} style={{ height: '100%', minHeight: 0 }}>
-                                        <div className="flex flex-col items-center justify-center h-full text-center p-4 sm:p-6 md:p-8">
-                                            <p className="text-base sm:text-lg md:text-xl font-semibold mb-2 text-foreground">Auto Journaling Active</p>
-                                            <p className="text-xs sm:text-sm md:text-base text-foreground/70">Trades are synced automatically from your broker</p>
+                                 <div className="w-full h-full p-4 pb-24">
+                                    <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                        <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                                            <p className="text-lg font-semibold mb-2 text-foreground">Auto Journaling Active</p>
+                                            <p className="text-sm text-foreground/70">Trades are synced automatically from your broker</p>
                                         </div>
                                     </SpotlightCard>
                                  </div>
                              )}
 
                              {/* Slide 4: Trader DNA with Imperial Score */}
-                             <div className="w-full flex-shrink-0 pt-3 sm:pt-4 pb-3 sm:pb-4 flex flex-col" style={{ height: '100%', minHeight: 0 }}>
-                                <SpotlightCard className="w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true} style={{ height: '100%', minHeight: 0 }}>
-                                    <div className="flex flex-col h-full px-2 sm:px-3 md:px-4 pb-5" style={{ minHeight: 0, overflow: 'hidden' }}>
+                             <div className="w-full h-full p-4 pb-24">
+                                <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                    <div className="flex flex-col h-full px-5 pb-5 overflow-y-auto overflow-x-hidden">
                                         {/* Processing Indicator - Mobile */}
                                         {hasProcessingTrades && (
                                             <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/20 text-amber-400 animate-pulse shrink-0">
@@ -3169,11 +3031,11 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                         {/* Imperial Score Display - NO CARD, just content */}
                                         <div className="mb-6 shrink-0 w-full">
                                             <div className="flex items-center justify-between mb-3">
-                                                <h3 className="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest opacity-70">
+                                                <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">
                                                     IMPERIAL SCORE
                                                 </h3>
                                                 {traderDNA.imperialScore > 80 && (
-                                                    <span className="text-[7px] sm:text-[8px] md:text-[9px] lg:text-[10px] font-black uppercase bg-yellow-500/20 text-yellow-500 px-1.5 sm:px-2 py-0.5 rounded">
+                                                    <span className="text-[8px] font-black uppercase bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded">
                                                         PRO
                                                     </span>
                                                 )}
@@ -3269,7 +3131,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                 >
                                                                     {/* Score Number Inside Indicator - Centered */}
                                                                     <span 
-                                                                        className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs font-black whitespace-nowrap"
+                                                                        className="text-[10px] font-black whitespace-nowrap"
                                                                         style={{ 
                                                                             color: textColor,
                                                                             transition: 'color 0ms linear',
@@ -3287,17 +3149,17 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                             </div>
                                             
                                             {/* Labels */}
-                                            <div className="flex justify-between text-[7px] sm:text-[8px] md:text-[9px] opacity-60">
+                                            <div className="flex justify-between text-[8px] opacity-60">
                                                 <span>Low</span>
                                                 <span>High</span>
                                             </div>
                                         </div>
 
                                         {/* Trader DNA Hexagram - WITH SEPARATE COMPONENT CARD */}
-                                        <div className={`flex-1 min-h-0 rounded-xl p-3 sm:p-4 flex flex-col ${isDarkMode ? 'bg-slate-800/30 border border-slate-700/30' : 'bg-slate-100 border border-slate-300/50'}`}>
-                                            <div className="flex justify-between items-center mb-3 sm:mb-4 shrink-0">
-                                                <h3 className={`text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest ${isDarkMode ? 'opacity-70' : 'opacity-80'} ${isDarkMode ? 'text-slate-200' : 'text-stone-700'}`}>TRADER DNA</h3>
-                                                <ActivityIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-50" />
+                                        <div className="flex-1 min-h-0 rounded-xl bg-slate-800/30 border border-slate-700/30 p-4 flex flex-col">
+                                            <div className="flex justify-between items-center mb-4 shrink-0">
+                                                <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">TRADER DNA</h3>
+                                                <ActivityIcon className="w-4 h-4 opacity-50" />
                                             </div>
                                             <div className="flex-1 min-h-0 -ml-4 flex items-center justify-center">
                                                 <ResponsiveContainer width="100%" height="100%">
@@ -3309,14 +3171,14 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                      data={radarData}
                                                    >
                                                        <PolarGrid 
-                                                           stroke={isDarkMode ? "rgba(96, 165, 250, 0.2)" : "rgba(148, 163, 184, 0.3)"} 
+                                                           stroke="rgba(96, 165, 250, 0.2)" 
                                                            strokeWidth={1}
                                                        />
                                                        <PolarAngleAxis 
                                                            dataKey="subject" 
                                                            tick={{ 
-                                                               fill: isDarkMode ? '#a1a1aa' : '#64748b', 
-                                                               fontSize: isMobile ? 8 : isTablet ? 9 : 10, 
+                                                               fill: '#a1a1aa', 
+                                                               fontSize: 9, 
                                                                fontWeight: 'bold' 
                                                            }} 
                                                        />
@@ -3364,15 +3226,14 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                        
                                                        <Tooltip 
                                                            contentStyle={{ 
-                                                               backgroundColor: isDarkMode ? '#18181b' : '#ffffff', 
+                                                               backgroundColor: '#18181b', 
                                                                borderRadius: '8px', 
-                                                               border: isDarkMode ? '1px solid rgba(96, 165, 250, 0.3)' : '1px solid rgba(148, 163, 184, 0.3)',
-                                                               color: isDarkMode ? '#fff' : '#000', 
+                                                               border: '1px solid rgba(96, 165, 250, 0.3)', 
                                                                boxShadow: '0 4px 12px rgba(96, 165, 250, 0.2)' 
                                                            }} 
                                                            itemStyle={{ 
                                                                color: '#e4e4e7', 
-                                                               fontSize: isMobile ? '10px' : isTablet ? '11px' : '12px', 
+                                                               fontSize: '11px', 
                                                                fontWeight: 'bold' 
                                                            }} 
                                                            formatter={(value: number) => [`${value}%`, 'Score']} 
@@ -3386,15 +3247,15 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                              </div>
 
                              {/* Slide 5: Trader Insights */}
-                             <div className="w-full flex-shrink-0 pt-3 sm:pt-4 pb-3 sm:pb-4 flex flex-col" style={{ height: '100%', minHeight: 0 }}>
-                                <SpotlightCard className="w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true} style={{ height: '100%', minHeight: 0 }}>
-                                        <TraderInsights 
-                                          key={`trader-insights-mobile-${activeMobileSlide}`}
-                                          trades={filteredTrades}
-                                          traderDNA={traderDNA} 
-                                          isDarkMode={isDarkMode}
-                                          hasProcessingTrades={hasProcessingTrades}
-                                        />
+                             <div className="w-full h-full p-4 pb-24">
+                                <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                    <TraderInsights 
+                                      key={`trader-insights-mobile-${activeMobileSlide}`}
+                                                             trades={filteredTrades}
+                                      traderDNA={traderDNA} 
+                                      isDarkMode={isDarkMode}
+                                      hasProcessingTrades={hasProcessingTrades}
+                                    />
                                 </SpotlightCard>
                              </div>
                          </div>
@@ -3608,20 +3469,15 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                         {brokerConnected && (
                             <>
                                 <div 
-                                   className="w-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
-                                   style={{ 
-                                     transform: `translateY(-${activeMobileSlide * 100}%)`,
-                                     height: '100%',
-                                     display: 'flex',
-                                     flexDirection: 'column'
-                                   }}
+                                   className="w-full h-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
+                                   style={{ transform: `translateY(-${activeMobileSlide * 100}%)` }}
                                 >
                                     {/* AUTO Slide 0: Trade Sync (synced trades list) */}
-                                    <div className="w-full flex-shrink-0 pt-3 sm:pt-4 pb-3 sm:pb-4 flex flex-col" style={{ height: '100%', minHeight: 0 }}>
-                                        <SpotlightCard className="w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true} style={{ height: '100%', minHeight: 0 }}>
+                                    <div className="w-full h-full p-4 pb-24">
+                                        <SpotlightCard className="h-full w-full" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
                                             <div className="flex flex-col h-full overflow-hidden">
-                                                <div className={`shrink-0 flex items-center justify-between px-2 sm:px-3 md:px-4 pt-5 pb-4 border-b ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
-                                                    <h3 className={`text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>SYNCED TRADES</h3>
+                                                <div className={`shrink-0 flex items-center justify-between px-6 pt-5 pb-4 border-b ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
+                                                    <h3 className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>SYNCED TRADES</h3>
                                                     <span className={`text-xs font-bold px-2 py-0.5 rounded-xl border ${isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-100 text-emerald-800 border-emerald-200'}`}>{filteredTrades.length}</span>
                                                 </div>
                                                 
@@ -3629,7 +3485,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                     <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40 p-10">
                                                         <NotebookIcon className="w-12 h-12 mb-3" />
                                                         <h4 className="font-bold text-sm uppercase tracking-widest">No Synced Trades</h4>
-                                                        <p className="text-[9px] sm:text-[10px] md:text-xs max-w-[150px] leading-relaxed mt-2">Trades will appear here once synced from your broker.</p>
+                                                        <p className="text-[10px] max-w-[150px] leading-relaxed mt-2">Trades will appear here once synced from your broker.</p>
                                                     </div>
                                                 ) : (
                                                    <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6 pt-4 space-y-3" style={{ touchAction: 'pan-y' }}>
@@ -3647,11 +3503,11 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                                     {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
                                                                                 </span>
                                                                             </div>
-                                                                            <span className="text-[9px] sm:text-[10px] md:text-xs text-stone-400 dark:text-slate-600">
+                                                                            <span className="text-[10px] text-stone-400 dark:text-slate-600">
                                                                                 {new Date(trade.date).toLocaleDateString()}
                                                                             </span>
                                                                         </div>
-                                                                        <span className={`text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                                        <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
                                                                             SYNCED
                                                                         </span>
                                                                     </div>
@@ -3665,13 +3521,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                     </div>
 
                                     {/* AUTO Slide 1: Calendar */}
-                                    <div className="w-full flex-shrink-0 pt-3 sm:pt-4 pb-3 sm:pb-4 flex flex-col" style={{ height: '100%', minHeight: 0 }}>
+                                    <div className="w-full h-full p-4 pb-24 flex flex-col">
                                        {/* Price Ticker above Calendar */}
-                                       <div className="shrink-0 mb-2 px-3 sm:px-4">
+                                       <div className="shrink-0 mb-2">
                                            <NewsTicker />
                                        </div>
-                                       <SpotlightCard className="w-full" isDarkMode={isDarkMode} tilt={false} style={{ height: 'calc(100% - 2.5rem)', minHeight: 0, maxHeight: 'calc(100% - 2.5rem)' }}>
-                                           <div className="h-full w-full flex flex-col min-h-0" style={{ paddingBottom: '1rem' }}>
+                                       <SpotlightCard className="flex-1 w-full" isDarkMode={isDarkMode} tilt={false}>
                                            <MacroCalendar 
                                                isDarkMode={isDarkMode} 
                                                trades={filteredTrades}
@@ -3680,16 +3535,15 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                viewDate={calendarViewDate}
                                                setViewDate={setCalendarViewDate}
                                            />
-                                           </div>
                                        </SpotlightCard>
                                     </div>
 
                                     {/* AUTO Slide 2: Performance Curve */}
-                                    <div className="w-full flex-shrink-0 pt-3 sm:pt-4 pb-3 sm:pb-4 flex flex-col" style={{ height: '100%', minHeight: 0 }}>
-                                       <SpotlightCard className="w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true} style={{ height: '100%', minHeight: 0 }}>
-                                           <div className="flex flex-col h-full px-2 sm:px-3 md:px-4 pb-5" style={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                                               <div className="flex justify-between items-center pt-5 pb-4 px-2 sm:px-3 md:px-4 shrink-0">
-                                                   <h3 className="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest opacity-70">
+                                    <div className="w-full h-full p-4 pb-24">
+                                       <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                           <div className="flex flex-col h-full px-5 pb-5 overflow-y-auto">
+                                               <div className="flex justify-between items-center pt-5 pb-4 px-1 shrink-0">
+                                                   <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">
                                                        {perfCurveTimeFilter === 'M' 
                                                            ? perfCurveViewDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }).toUpperCase()
                                                            : perfCurveViewDate.getFullYear().toString()
@@ -3700,7 +3554,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                            <button 
                                                                key={f} 
                                                                onClick={() => setPerfCurveTimeFilter(f)}
-                                                               className={`px-2 py-0.5 text-[9px] sm:text-[10px] md:text-xs font-bold rounded transition-colors ${perfCurveTimeFilter === f ? (isDarkMode ? 'bg-white/20 text-white' : 'bg-black/10 text-black') : 'opacity-50 hover:opacity-80'}`}
+                                                               className={`px-2 py-0.5 text-[10px] font-bold rounded transition-colors ${perfCurveTimeFilter === f ? (isDarkMode ? 'bg-white/20 text-white' : 'bg-black/10 text-black') : 'opacity-50 hover:opacity-80'}`}
                                                            >
                                                                {f}
                                                            </button>
@@ -3752,14 +3606,14 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                     </div>
 
                                     {/* AUTO Slide 3: Trader DNA + Insights Toggle */}
-                                    <div className="w-full flex-shrink-0 pt-3 sm:pt-4 pb-3 sm:pb-4 flex flex-col" style={{ height: '100%', minHeight: 0 }}>
-                                       <SpotlightCard className="w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true} style={{ height: '100%', minHeight: 0 }}>
-                                           <div className="flex flex-col h-full px-2 sm:px-3 md:px-4 pb-5" style={{ minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                                    <div className="w-full h-full p-4 pb-24">
+                                       <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true}>
+                                           <div className="flex flex-col h-full px-5 pb-5 overflow-y-auto overflow-x-hidden">
                                                {/* Toggle Tabs - DNA vs Insights */}
-                                               <div className={`shrink-0 flex rounded-xl p-1 mb-4 mt-4 mx-2 sm:mx-3 md:mx-4 ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
+                                               <div className={`shrink-0 flex rounded-xl p-1 mb-4 mt-4 ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
                                                    <button 
                                                        onClick={() => setMobileDnaView('DNA')}
-                                                       className={`flex-1 py-2.5 sm:py-3 flex items-center justify-center rounded-lg transition-all ${
+                                                       className={`flex-1 py-2.5 flex items-center justify-center rounded-lg transition-all ${
                                                            mobileDnaView === 'DNA' 
                                                                ? (isDarkMode ? 'bg-white/10 text-white' : 'bg-white text-stone-900 shadow-sm') 
                                                                : (isDarkMode ? 'text-slate-400' : 'text-stone-500')
@@ -3769,7 +3623,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                    </button>
                                                    <button 
                                                        onClick={() => setMobileDnaView('INSIGHTS')}
-                                                       className={`flex-1 py-2.5 sm:py-3 flex items-center justify-center rounded-lg transition-all ${
+                                                       className={`flex-1 py-2.5 flex items-center justify-center rounded-lg transition-all ${
                                                            mobileDnaView === 'INSIGHTS' 
                                                                ? (isDarkMode ? 'bg-white/10 text-white' : 'bg-white text-stone-900 shadow-sm') 
                                                                : (isDarkMode ? 'text-slate-400' : 'text-stone-500')
@@ -3792,7 +3646,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                    <div className="flex items-center justify-between mb-2">
                                                        <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">IMPERIAL SCORE</h3>
                                                        {traderDNA.imperialScore > 80 && (
-                                                           <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black uppercase bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded">PRO</span>
+                                                           <span className="text-[8px] font-black uppercase bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded">PRO</span>
                                                        )}
                                                    </div>
                                                    
@@ -3826,30 +3680,30 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                <div className="absolute top-1/2 -translate-y-1/2 z-20" style={{ left: actualLeft, transform: 'translateX(-50%) translateY(-50%)' }}>
                                                                    <div className="rounded-full p-[5px]" style={{ background: borderGradientColor, boxShadow: `0 0 25px ${borderGradientColor}90, 0 0 15px ${borderGradientColor}70` }}>
                                                                        <div className="h-5 rounded-full bg-black flex items-center justify-center px-2 min-w-[50px]">
-                                                                           <span className="text-[9px] sm:text-[10px] md:text-xs font-black whitespace-nowrap" style={{ color: borderGradientColor }}>{animatedImperialScore.toFixed(1)}</span>
+                                                                           <span className="text-[10px] font-black whitespace-nowrap" style={{ color: borderGradientColor }}>{animatedImperialScore.toFixed(1)}</span>
                                                                        </div>
                                                                    </div>
                                                                </div>
                                                            );
                                                        })()}
                                                    </div>
-                                                   <div className="flex justify-between text-[7px] sm:text-[8px] md:text-[9px] opacity-60">
+                                                   <div className="flex justify-between text-[8px] opacity-60">
                                                        <span>Low</span>
                                                        <span>High</span>
                                                    </div>
                                                </div>
 
                                                {/* Trader DNA Hexagram */}
-                                               <div className={`flex-1 min-h-0 rounded-xl p-4 flex flex-col ${isDarkMode ? 'bg-slate-800/30 border border-slate-700/30' : 'bg-slate-100 border border-slate-300/50'}`}>
+                                               <div className="flex-1 min-h-0 rounded-xl bg-slate-800/30 border border-slate-700/30 p-4 flex flex-col">
                                                    <div className="flex justify-between items-center mb-2 shrink-0">
-                                                       <h3 className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'opacity-70' : 'opacity-80'} ${isDarkMode ? 'text-slate-200' : 'text-stone-700'}`}>TRADER DNA</h3>
+                                                       <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">TRADER DNA</h3>
                                                        <ActivityIcon className="w-4 h-4 opacity-50" />
                                                    </div>
                                                    <div className="flex-1 min-h-0 -ml-4 flex items-center justify-center">
                                                        <ResponsiveContainer width="100%" height="100%">
                                                           <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                                                              <PolarGrid stroke={isDarkMode ? "rgba(96, 165, 250, 0.2)" : "rgba(148, 163, 184, 0.3)"} strokeWidth={1} />
-                                                              <PolarAngleAxis dataKey="subject" tick={{ fill: isDarkMode ? '#a1a1aa' : '#64748b', fontSize: 9, fontWeight: 'bold' }} />
+                                                              <PolarGrid stroke="rgba(96, 165, 250, 0.2)" strokeWidth={1} />
+                                                              <PolarAngleAxis dataKey="subject" tick={{ fill: '#a1a1aa', fontSize: 9, fontWeight: 'bold' }} />
                                                               <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
                                                               <Radar name="Performance" dataKey="A" stroke="url(#dnaGradientMobileAuto)" strokeWidth={2.5} fill="url(#dnaGradientMobileAuto)" fillOpacity={0.6} />
                                                               <defs>
@@ -3859,7 +3713,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                       <stop offset="100%" stopColor="#dc2626" stopOpacity={0.6} />
                                                                   </linearGradient>
                                                               </defs>
-                                                              <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#18181b' : '#ffffff', borderRadius: '8px', border: isDarkMode ? '1px solid rgba(96, 165, 250, 0.3)' : '1px solid rgba(148, 163, 184, 0.3)', color: isDarkMode ? '#fff' : '#000' }} formatter={(value: number) => [`${value}%`, 'Score']} />
+                                                              <Tooltip contentStyle={{ backgroundColor: '#18181b', borderRadius: '8px', border: '1px solid rgba(96, 165, 250, 0.3)' }} formatter={(value: number) => [`${value}%`, 'Score']} />
                                                           </RadarChart>
                                                        </ResponsiveContainer>
                                                    </div>
@@ -3899,75 +3753,30 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                     </>
                 )}
 
-                 {/* MECCA TAB - Mobile: Deconstructor only - CONSISTENT STRUCTURE ACROSS ALL DEVICES */}
+                 {/* MECCA TAB - Chart + Economic Calendar only (AI moved to Insight tab) */}
                  {activeTab === 'MECCA' && (
-                     <div className="lg:hidden relative" 
-                          style={{ 
-                            height: 'calc(100% - 4rem - max(5.5rem, calc(5.5rem + env(safe-area-inset-bottom, 0px))))',
-                            maxHeight: 'calc(100% - 4rem - max(5.5rem, calc(5.5rem + env(safe-area-inset-bottom, 0px))))',
-                            minHeight: 0,
-                            overflow: 'visible', // Allow hint text to be visible
-                          }}
-                     >
-                         {/* Mobile MECCA tab - CONSISTENT with desktop/tablet */}
-                         <DeconstructorPanel key="mecca-deconstructor-mobile" isDarkMode={isDarkMode}>
-                           {(context) => (
-                               <div className="flex flex-col h-full overflow-y-auto">
-                               <SpotlightCard variant="journal" className="w-full flex flex-col flex-1 min-h-0" noPadding isDarkMode={isDarkMode}>
-                                 <DeconstructorPanelContent isDarkMode={isDarkMode} />
-                               </SpotlightCard>
-                               <DeconstructorButtons isDarkMode={isDarkMode} />
-                                   </div>
-                                 )}
-                         </DeconstructorPanel>
+                     <div className="w-full h-full overflow-hidden">
+                         <GeminiSetupAnalyzer 
+                           isDarkMode={isDarkMode} 
+                           mobileActiveTab={meccaMobileTab}
+                           onMobileTabChange={setMeccaMobileTab}
+                           isMobileInstance={true}
+                           hideAiPanel={true}
+                         />
                      </div>
                  )}
 
                 {/* CALCU TAB - Risk Calculator */}
                 {activeTab === 'CALCU' && (
-                     <div className="w-full flex-shrink-0 pt-3 sm:pt-4 pb-3 sm:pb-4 flex flex-col" style={{ height: '100%', minHeight: 0 }}>
-                         <SpotlightCard className="w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true} variant="journal" style={{ height: '100%', minHeight: 0 }}>
-                                 <RiskCalculator />
-                         </SpotlightCard>
+                     <div className="w-full h-full p-4 pb-24 overflow-y-auto custom-scrollbar">
+                         <RiskCalculator />
                      </div>
                  )}
 
                  {/* INSIGHT TAB - Gemini API setup + AI analysis (mobile/tablet; separate from MECCA) */}
                  {activeTab === 'INSIGHT' && (
-                     <div className="w-full h-full overflow-hidden relative">
-                         {/* Always render GeminiSetupAnalyzer so ref is available and modal can render */}
-                         {/* Keep it fully rendered but visually hidden when history is shown */}
-                        <div style={{ 
-                            position: showHistoryPage ? 'absolute' : 'relative',
-                            width: '100%',
-                            height: '100%',
-                            pointerEvents: showHistoryPage ? 'none' : 'auto',
-                            opacity: showHistoryPage ? 0 : 1,
-                            zIndex: showHistoryPage ? -1 : 0,
-                            // Keep visibility: visible so React can still render portals even when hidden
-                            // The opacity: 0 and pointer-events: none will hide it visually
-                            visibility: 'visible'
-                        }}>
-                            <GeminiSetupAnalyzer ref={insightAnalyzerRef} isDarkMode={isDarkMode} insightOnly={true} />
-                        </div>
-                         {showHistoryPage && (
-                             <InsightHistoryPage
-                                 onClose={() => setShowHistoryPage(false)}
-                                onSelectAnalysis={(analysis) => {
-                                    // #region agent log
-                                    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'JournalXXComponent.tsx:3960',message:'onSelectAnalysis called - DIRECT MODAL RENDERING',data:{hasAnalysis:!!analysis,analysisKeys:analysis?Object.keys(analysis):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'direct-modal',hypothesisId:'G'})}).catch(()=>{});
-                                    // #endregion
-                                    // Open modal directly from JournalXXComponent - no ref chain needed
-                                    console.log('[JournalXX] Opening modal directly with analysis:', analysis);
-                                    setSelectedAnalysis(analysis);
-                                    setShowProModal(true);
-                                    // #region agent log
-                                    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'JournalXXComponent.tsx:3967',message:'Modal state set - showProModal: true',data:{hasAnalysis:!!analysis},timestamp:Date.now(),sessionId:'debug-session',runId:'direct-modal',hypothesisId:'G'})}).catch(()=>{});
-                                    // #endregion
-                                }}
-                                 isDarkMode={isDarkMode}
-                             />
-                         )}
+                     <div className="w-full h-full overflow-hidden">
+                         <GeminiSetupAnalyzer isDarkMode={isDarkMode} insightOnly={true} />
                      </div>
                  )}
              </div>
@@ -4038,7 +3847,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                      }`}
                                                  >
                                                      <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={tiltMode} noPadding={true}>
-                                                         <div className="flex flex-col h-full px-3 sm:px-4 md:px-5 pb-5 overflow-hidden">
+                                                         <div className="flex flex-col h-full px-5 pb-5 overflow-hidden">
                                                              {/* Performance Curve Header - Same as Mobile */}
                                                              <div className="flex justify-between items-center pt-5 pb-4 px-1 shrink-0">
                                                                  <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">
@@ -4065,7 +3874,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                              <button
                                                                                  key={filter}
                                                                                  onClick={() => setPerfCurveTimeFilter(filter)}
-                                                                                 className={`px-2 py-0.5 text-[7px] sm:text-[8px] md:text-[9px] font-bold rounded ${
+                                                                                 className={`px-2 py-0.5 text-[8px] font-bold rounded ${
                                                                                      perfCurveTimeFilter === filter 
                                                                                          ? isDarkMode ? 'bg-stone-700 shadow-sm' : 'bg-white shadow-sm'
                                                                                          : 'opacity-50'
@@ -4124,7 +3933,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                                  <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
                                                                                      <TrendingUpIcon className="w-12 h-12 mb-3" />
                                                                                      <h4 className="font-bold text-sm uppercase tracking-widest">No Trades</h4>
-                                                                                     <p className="text-[9px] sm:text-[10px] md:text-xs max-w-[150px] leading-relaxed mt-2">No trades found for this period.</p>
+                                                                                     <p className="text-[10px] max-w-[150px] leading-relaxed mt-2">No trades found for this period.</p>
                                                                                  </div>
                                                                              ) : (
                                                                                  <ResponsiveContainer width="100%" height="100%">
@@ -4138,12 +3947,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                                          <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"} />
                                                                                          <XAxis 
                                                                                              dataKey="index" 
-                                                                                             tick={{ fontSize: isMobile ? 9 : isTablet ? 10 : 11, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
+                                                                                             tick={{ fontSize: 10, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
                                                                                              axisLine={{ stroke: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
                                                                                              tickLine={false}
                                                                                          />
                                                                                          <YAxis 
-                                                                                             tick={{ fontSize: isMobile ? 9 : isTablet ? 10 : 11, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
+                                                                                             tick={{ fontSize: 10, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
                                                                                              axisLine={{ stroke: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
                                                                                              tickLine={false}
                                                                                              tickFormatter={(value) => `$${value}`}
@@ -4155,9 +3964,9 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                                                  borderRadius: '12px',
                                                                                                  border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
                                                                                                  boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                                                                                                 padding: isMobile ? '6px 10px' : '8px 12px'
+                                                                                                 padding: '8px 12px'
                                                                                              }}
-                                                                                             labelStyle={{ color: isDarkMode ? '#e4e4e7' : '#18181b', fontSize: isMobile ? '10px' : isTablet ? '11px' : '12px', fontWeight: 'bold' }}
+                                                                                             labelStyle={{ color: isDarkMode ? '#e4e4e7' : '#18181b', fontSize: '11px', fontWeight: 'bold' }}
                                                                                              formatter={(value: number) => [`$${value.toFixed(2)}`, 'Cumulative P&L']}
                                                                                              labelFormatter={(label, payload) => {
                                                                                                  if (payload && payload[0]) {
@@ -4210,23 +4019,23 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                  return (
                                                                      <div className={`grid grid-cols-4 gap-2 pt-4 mt-auto shrink-0 border-t ${isDarkMode ? 'border-white/10' : 'border-stone-200'}`}>
                                                                          <div className="text-center">
-                                                                             <p className={`text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Trades</p>
+                                                                             <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Trades</p>
                                                                              <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>{perfFilteredTrades.length}</p>
                                                                          </div>
                                                                          <div className="text-center">
-                                                                             <p className={`text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Win Rate</p>
+                                                                             <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Win Rate</p>
                                                                              <p className={`text-sm font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
                                                                                  {((perfFilteredTrades.filter(t => t.pnl > 0).length / perfFilteredTrades.length) * 100).toFixed(0)}%
                                                                              </p>
                                                                          </div>
                                                                          <div className="text-center">
-                                                                             <p className={`text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Best</p>
+                                                                             <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Best</p>
                                                                              <p className="text-sm font-bold text-emerald-500">
                                                                                  +${Math.max(...perfFilteredTrades.map(t => t.pnl), 0).toFixed(0)}
                                                                              </p>
                                                                          </div>
                                                                          <div className="text-center">
-                                                                             <p className={`text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Worst</p>
+                                                                             <p className={`text-[9px] uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-stone-400'}`}>Worst</p>
                                                                              <p className="text-sm font-bold text-rose-500">
                                                                                  ${Math.min(...perfFilteredTrades.map(t => t.pnl), 0).toFixed(0)}
                                                                              </p>
@@ -4274,52 +4083,28 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                                  {/* INSIGHT TAB - Gemini API setup + AI analysis (separate from MECCA) */}
                                  {activeTab === 'INSIGHT' && (
-                                     <div className="h-full w-full overflow-hidden animate-in fade-in duration-300 relative">
-                                         {/* Always render GeminiSetupAnalyzer so ref is available, hide it when showing history */}
-                                         <div className={showHistoryPage ? 'hidden' : ''}>
-                                             <GeminiSetupAnalyzer ref={insightAnalyzerRef} isDarkMode={isDarkMode} insightOnly={true} />
-                                         </div>
-                                         {showHistoryPage && (
-                                             <InsightHistoryPage
-                                                 onClose={() => setShowHistoryPage(false)}
-                                                 onSelectAnalysis={(analysis) => {
-                                                     // Open the modal - don't close history page, modal will appear on top
-                                                     if (insightAnalyzerRef.current) {
-                                                         console.log('[JournalXX] Opening modal from history with analysis:', analysis);
-                                                         insightAnalyzerRef.current.openProAnalysis(analysis);
-                                                         // Don't close history page - let modal appear on top
-                                                         // User can close modal to return to history
-                                                     }
-                                                 }}
-                                                 isDarkMode={isDarkMode}
-                                             />
-                                         )}
+                                     <div className="h-full w-full overflow-hidden animate-in fade-in duration-300">
+                                         <GeminiSetupAnalyzer isDarkMode={isDarkMode} insightOnly={true} />
                                      </div>
                                  )}
 
-                                 {/* MECCA - Deconstructor only */}
+                                 {/* MECCA - Chart + Economic Calendar only (AI in Insight tab) */}
                                  {activeTab === 'MECCA' && (
-                                     <div className="h-full w-full overflow-visible animate-in fade-in duration-300">
-                                         {/* Desktop/Tablet MECCA tab - EXACT SAME STRUCTURE AS MOBILE */}
-                                         <DeconstructorPanel key="mecca-deconstructor-desktop" isDarkMode={isDarkMode}>
-                                           {(context) => (
-                                             <div className="flex flex-col h-full overflow-y-auto">
-                                               <SpotlightCard variant="journal" className="w-full flex flex-col flex-1 min-h-0" noPadding isDarkMode={isDarkMode}>
-                                                 <DeconstructorPanelContent isDarkMode={isDarkMode} />
-                                               </SpotlightCard>
-                                               <DeconstructorButtons isDarkMode={isDarkMode} />
-                                             </div>
-                                           )}
-                                         </DeconstructorPanel>
+                                     <div className="h-full w-full overflow-hidden animate-in fade-in duration-300">
+                                         <GeminiSetupAnalyzer 
+                                           isDarkMode={isDarkMode} 
+                                           mobileActiveTab={meccaMobileTab}
+                                           onMobileTabChange={setMeccaMobileTab}
+                                           isMobileInstance={false}
+                                           hideAiPanel={true}
+                                         />
                                      </div>
                                  )}
                                  
                                  {/* CALCU TAB - Risk Calculator */}
                                  {activeTab === 'CALCU' && (
-                                     <div className="h-full w-full flex flex-col animate-in fade-in duration-300">
-                                         <SpotlightCard className="h-full w-full flex flex-col" isDarkMode={isDarkMode} tilt={false} noPadding={true} variant="journal">
-                                             <RiskCalculator />
-                                         </SpotlightCard>
+                                     <div className="h-full w-full overflow-y-auto custom-scrollbar animate-in fade-in duration-300">
+                                         <RiskCalculator />
                                      </div>
                                  )}
                              </div>
@@ -4331,7 +4116,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                        <div className={`col-span-12 lg:col-span-3 flex flex-col h-[calc(100vh-10rem)] ${isDarkMode ? '' : 'bg-[#F0F0F0]'}`}>
                           <SpotlightCard className={`w-full h-full flex flex-col`} isDarkMode={isDarkMode} noPadding={true}>
                               {/* Right Sidebar Header with 4-way Toggle */}
-                              <div className="px-3 sm:px-4 md:px-5 pt-5 pb-2 shrink-0">
+                              <div className="px-5 pt-5 pb-2 shrink-0">
                                   <div className={`flex items-center gap-2 p-1 rounded-xl border bg-[#1C1C1E] border-white/10 mb-2 ${
                                       // In AUTO mode, only show 2 buttons (TRADER_DNA and TRADER_INSIGHTS)
                                       // In MANUAL mode, show all 4 buttons
@@ -4386,7 +4171,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                   {/* Simple/Advanced Toggle - Only show when LOG_ENTRY is active */}
                                   {rightSidebarView === 'LOG_ENTRY' && journalMode === 'MANUAL' && logMode === 'ENTRY' && (
                                       <div className="flex justify-between items-center mb-0.5">
-                                          <h3 className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs md:text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-70 flex items-center gap-1">
+                                          <h3 className="text-[9px] font-bold uppercase tracking-widest opacity-70 flex items-center gap-1">
                                               <span className="w-0.5 h-0.5 bg-yellow-500 dark:bg-bronze-500 rotate-45 rounded-[1px]"></span>
                                               {editingId ? 'Edit Entry' : 'Log Entry'}
                                           </h3>
@@ -4394,7 +4179,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                           <div className="flex items-center rounded-full border bg-[#1C1C1E] border-white/10 h-5 overflow-hidden">
                                               <button
                                                   onClick={() => setEntryMode('SIMPLE')}
-                                                  className={`px-2 h-full flex items-center justify-center transition-all text-[7px] sm:text-[8px] md:text-[9px] font-semibold uppercase tracking-wide ${
+                                                  className={`px-2 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                                       entryMode === 'SIMPLE'
                                                           ? 'bg-stone-700 text-bronze-500'
                                                           : 'text-slate-600 hover:text-slate-400'
@@ -4404,7 +4189,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                               </button>
                                               <button
                                                   onClick={() => setEntryMode('ADVANCED')}
-                                                  className={`px-2 h-full flex items-center justify-center transition-all text-[7px] sm:text-[8px] md:text-[9px] font-semibold uppercase tracking-wide ${
+                                                  className={`px-2 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                                       entryMode === 'ADVANCED'
                                                           ? 'bg-stone-700 text-bronze-500'
                                                           : 'text-slate-600 hover:text-slate-400'
@@ -4419,7 +4204,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                               {/* Conditional Content Based on rightSidebarView */}
                               {rightSidebarView === 'TRADER_DNA' && (
-                                  <div className="flex flex-col h-full px-3 sm:px-4 md:px-5 pb-5 overflow-y-auto overflow-x-hidden">
+                                  <div className="flex flex-col h-full px-5 pb-5 overflow-y-auto overflow-x-hidden">
                                       <div className="flex justify-between items-center mb-6 shrink-0">
                                           <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">TRADER DNA</h3>
                                           <ActivityIcon className="w-4 h-4 opacity-50" />
@@ -4439,11 +4224,11 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                       {/* Imperial Score Display */}
                                       <div className="mb-6 shrink-0 w-full">
                                           <div className="flex items-center justify-between mb-3">
-                                                <h3 className="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest opacity-70">
+                                              <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">
                                                   IMPERIAL SCORE
                                               </h3>
                                               {traderDNA.imperialScore > 80 && (
-                                                    <span className="text-[7px] sm:text-[8px] md:text-[9px] lg:text-[10px] font-black uppercase bg-yellow-500/20 text-yellow-500 px-1.5 sm:px-2 py-0.5 rounded">
+                                                  <span className="text-[8px] font-black uppercase bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded">
                                                       PRO
                                                   </span>
                                               )}
@@ -4539,7 +4324,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                               >
                                                                   {/* Score Number Inside Indicator - Centered */}
                                                                   <span 
-                                                                      className="text-[9px] sm:text-[10px] md:text-xs font-black whitespace-nowrap"
+                                                                      className="text-[10px] font-black whitespace-nowrap"
                                                                       style={{ 
                                                                           color: textColor,
                                                                           transition: 'color 0ms linear',
@@ -4557,29 +4342,29 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                           </div>
                                           
                                           {/* Labels */}
-                                          <div className="flex justify-between text-[7px] sm:text-[8px] md:text-[9px] opacity-60">
+                                          <div className="flex justify-between text-[8px] opacity-60">
                                               <span>Low</span>
                                               <span>High</span>
                                           </div>
                                       </div>
 
                                       {/* Trader DNA Hexagram - WITH SEPARATE COMPONENT CARD */}
-                                      <div className={`flex-1 min-h-0 rounded-xl p-4 flex flex-col ${isDarkMode ? 'bg-slate-800/30 border border-slate-700/30' : 'bg-slate-100 border border-slate-300/50'}`}>
+                                      <div className="flex-1 min-h-0 rounded-xl bg-slate-800/30 border border-slate-700/30 p-4 flex flex-col">
                                           <div className="flex justify-between items-center mb-4 shrink-0">
-                                              <h3 className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'opacity-70' : 'opacity-80'} ${isDarkMode ? 'text-slate-200' : 'text-stone-700'}`}>TRADER DNA</h3>
+                                              <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">TRADER DNA</h3>
                                               <ActivityIcon className="w-4 h-4 opacity-50" />
                                           </div>
                                           <div className="flex-1 min-h-0 -ml-4 flex items-center justify-center">
                                               <ResponsiveContainer width="100%" height="100%">
                                                  <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
                                                  <PolarGrid 
-                                                     stroke={isDarkMode ? "rgba(96, 165, 250, 0.2)" : "rgba(148, 163, 184, 0.3)"} 
+                                                     stroke="rgba(96, 165, 250, 0.2)" 
                                                      strokeWidth={1}
                                                  />
                                                  <PolarAngleAxis 
                                                      dataKey="subject" 
                                                      tick={{ 
-                                                         fill: isDarkMode ? '#a1a1aa' : '#64748b', 
+                                                         fill: '#a1a1aa', 
                                                          fontSize: 9, 
                                                          fontWeight: 'bold' 
                                                      }} 
@@ -4628,11 +4413,10 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                  
                                                  <Tooltip 
                                                      contentStyle={{ 
-                                                         backgroundColor: isDarkMode ? '#18181b' : '#ffffff', 
+                                                         backgroundColor: '#18181b', 
                                                          borderRadius: '8px', 
-                                                         border: isDarkMode ? '1px solid rgba(96, 165, 250, 0.3)' : '1px solid rgba(148, 163, 184, 0.3)', 
-                                                         boxShadow: isDarkMode ? '0 4px 12px rgba(96, 165, 250, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
-                                                         color: isDarkMode ? '#fff' : '#000'
+                                                         border: '1px solid rgba(96, 165, 250, 0.3)', 
+                                                         boxShadow: '0 4px 12px rgba(96, 165, 250, 0.2)' 
                                                      }} 
                                                      itemStyle={{ 
                                                          color: '#e4e4e7', 
@@ -4661,10 +4445,10 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                           <div className="flex flex-col animate-in fade-in duration-300 h-full min-h-0">
                                               {/* SIMPLE MODE - Basic fields only */}
                                               {entryMode === 'SIMPLE' ? (
-                                                  <div className="px-3 sm:px-4 md:px-5 pb-2 space-y-3 overflow-y-auto custom-scrollbar flex-1 flex flex-col" style={{ minHeight: 0, maxWidth: '100%', overflowX: 'hidden' }}>
+                                                  <div className="px-5 pb-2 space-y-3 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
                                                       {/* Date */}
-                                                      <div className="relative group shrink-0" style={{ maxWidth: '100%', minWidth: 0 }}>
-                                                          <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Date</label>
+                                                      <div className="relative group shrink-0">
+                                                          <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Date</label>
                                                           <div className="absolute left-3 top-[28px] text-stone-500 dark:text-slate-500 pointer-events-none">
                                                               <CalendarIcon className="w-3.5 h-3.5" />
                                                           </div>
@@ -4672,26 +4456,24 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                               type="date"
                                                               value={date}
                                                               onChange={(e) => setDate(e.target.value)}
-                                                              className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-9 pr-2 py-2.5 sm:py-3 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm transition-all [color-scheme:light] dark:[color-scheme:dark]"
-                                                              style={{ maxWidth: '100%', boxSizing: 'border-box' }}
+                                                              className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-9 pr-2 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm transition-all [color-scheme:light] dark:[color-scheme:dark]"
                                                           />
                                                       </div>
 
                                                       {/* Asset & PnL */}
-                                                      <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5 shrink-0" style={{ maxWidth: '100%', minWidth: 0 }}>
-                                                          <div style={{ maxWidth: '100%', minWidth: 0 }}>
-                                                              <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Asset</label>
+                                                      <div className="grid grid-cols-2 gap-2.5 shrink-0">
+                                                          <div>
+                                                              <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Asset</label>
                                                               <input 
                                                                   type="text" 
                                                                   value={asset} 
                                                                   onChange={(e) => setAsset(e.target.value)} 
                                                                   placeholder="BTCUSD" 
-                                                                  className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 sm:py-3 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600" 
-                                                                  style={{ maxWidth: '100%', boxSizing: 'border-box' }}
+                                                                  className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600" 
                                                               />
                                                           </div>
                                                           <div>
-                                                              <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Profit / Loss ($)</label>
+                                                              <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Profit / Loss ($)</label>
                                                               <div className="relative">
                                                                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 dark:text-slate-500 font-bold text-xs">$</span>
                                                                   <input 
@@ -4699,7 +4481,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                       value={pnl} 
                                                                       onChange={(e) => setPnl(e.target.value)} 
                                                                       placeholder="0.00" 
-                                                                      className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-7 pr-3 py-2.5 sm:py-3 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600 ${Number(pnl) > 0 ? 'text-emerald-500' : Number(pnl) < 0 ? 'text-rose-500' : 'text-stone-900 dark:text-white'}`} 
+                                                                      className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-7 pr-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600 ${Number(pnl) > 0 ? 'text-emerald-500' : Number(pnl) < 0 ? 'text-rose-500' : 'text-stone-900 dark:text-white'}`} 
                                                                   />
                                                               </div>
                                                           </div>
@@ -4707,7 +4489,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                                                       {/* Notes */}
                                                       <div className="flex-col flex-1 min-h-[100px] flex shrink-0">
-                                                          <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Strategy & Psychology Notes</label>
+                                                          <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Strategy & Psychology Notes</label>
                                                           <textarea 
                                                               value={notes} 
                                                               onChange={(e) => setNotes(e.target.value)} 
@@ -4718,7 +4500,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                                                       {/* Image Upload */}
                                                       <div className="shrink-0">
-                                                          <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Chart Snapshot</label>
+                                                          <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Chart Snapshot</label>
                                                           <div 
                                                               onClick={handleClick}
                                                               onDragEnter={handleDragEnter}
@@ -4745,7 +4527,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                       <UploadIcon 
                                                                           className={`relative z-10 w-5 h-5 ${isDragging ? 'text-yellow-600 dark:text-bronze-400 scale-110' : 'text-stone-400 dark:text-bronze-500'} transition-all duration-200 ${isDragging ? 'animate-pulse' : 'group-hover:scale-110'}`}
                                                                       />
-                                                                      <span className={`relative z-10 text-[9px] sm:text-[10px] md:text-xs font-bold ${isDragging ? 'text-yellow-700 dark:text-bronze-300' : 'text-stone-500 dark:text-bronze-500'} uppercase tracking-wide transition-colors`}>
+                                                                      <span className={`relative z-10 text-[10px] font-bold ${isDragging ? 'text-yellow-700 dark:text-bronze-300' : 'text-stone-500 dark:text-bronze-500'} uppercase tracking-wide transition-colors`}>
                                                                           {isDragging ? '✨ Drop to upload (max 3)' : 'Click to upload chart'}
                                                                       </span>
                                                                   </>
@@ -4773,12 +4555,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                           ))}
                                                                       </div>
                                                                       {previewUrls.length < 3 && (
-                                                                          <span className={`text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded ${isDragging ? 'text-yellow-700 dark:text-bronze-300 bg-yellow-100 dark:bg-bronze-900/30' : 'text-stone-500 dark:text-bronze-500 bg-stone-100 dark:bg-slate-800'} whitespace-nowrap transition-colors`}>
+                                                                          <span className={`text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded ${isDragging ? 'text-yellow-700 dark:text-bronze-300 bg-yellow-100 dark:bg-bronze-900/30' : 'text-stone-500 dark:text-bronze-500 bg-stone-100 dark:bg-slate-800'} whitespace-nowrap transition-colors`}>
                                                                               {previewUrls.length}/3
                                                                           </span>
                                                                       )}
                                                                       {previewUrls.length >= 3 && (
-                                                                          <span className={`text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded whitespace-nowrap`}>
+                                                                          <span className={`text-[8px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded whitespace-nowrap`}>
                                                                               MAX 3
                                                                           </span>
                                                                       )}
@@ -4789,11 +4571,11 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                   </div>
                                               ) : (
                                                   /* ADVANCED MODE - All fields */
-                                              <div className="px-3 sm:px-4 md:px-5 pb-2 space-y-2.5 overflow-y-auto custom-scrollbar flex-1 flex flex-col pt-2" style={{ minHeight: 0, maxWidth: '100%', overflowX: 'hidden' }}>
+                                              <div className="px-5 pb-2 space-y-2.5 overflow-y-auto custom-scrollbar flex-1 flex flex-col pt-2">
                                                   
                                                   {/* Row 1: Date & Direction Mixed */}
-                                                  <div className="grid grid-cols-12 gap-1.5 sm:gap-2 md:gap-2.5 shrink-0" style={{ maxWidth: '100%', minWidth: 0 }}>
-                                                      <div className="col-span-6 relative group" style={{ maxWidth: '100%', minWidth: 0 }}>
+                                                  <div className="grid grid-cols-12 gap-2.5 shrink-0">
+                                                      <div className="col-span-7 relative group">
                                                           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 dark:text-slate-500 pointer-events-none">
                                                               <CalendarIcon className="w-3.5 h-3.5" />
                                                           </div>
@@ -4801,20 +4583,19 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                               type="date"
                                                               value={date}
                                                               onChange={(e) => setDate(e.target.value)}
-                                                              className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-9 pr-2 py-2.5 sm:py-3 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm transition-all [color-scheme:light] dark:[color-scheme:dark]"
-                                                              style={{ maxWidth: '100%', boxSizing: 'border-box', width: '100%' }}
+                                                              className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-9 pr-2 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm transition-all [color-scheme:light] dark:[color-scheme:dark]"
                                                           />
                                                       </div>
-                                                      <div className="col-span-6 flex bg-stone-100 dark:bg-white/5 p-1 rounded-xl" style={{ maxWidth: '100%', minWidth: 0 }}>
+                                                      <div className="col-span-5 flex bg-stone-100 dark:bg-white/5 p-1 rounded-xl">
                                                           <button 
                                                               onClick={() => setDirection('Long')}
-                                                              className={`flex-1 rounded-lg text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-black uppercase transition-all ${direction === 'Long' ? 'bg-emerald-500 text-white shadow-sm' : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'}`}
+                                                              className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all ${direction === 'Long' ? 'bg-emerald-500 text-white shadow-sm' : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'}`}
                                                           >
                                                               Long
                                                           </button>
                                                           <button 
                                                               onClick={() => setDirection('Short')}
-                                                              className={`flex-1 rounded-lg text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-black uppercase transition-all ${direction === 'Short' ? 'bg-rose-500 text-white shadow-sm' : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'}`}
+                                                              className={`flex-1 rounded-lg text-[9px] font-black uppercase transition-all ${direction === 'Short' ? 'bg-rose-500 text-white shadow-sm' : 'text-stone-400 hover:text-stone-600 dark:text-slate-500 dark:hover:text-slate-300'}`}
                                                           >
                                                               Short
                                                           </button>
@@ -4822,31 +4603,31 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                   </div>
 
                                                    {/* Row 2: Asset & PnL */}
-                                                   <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5 shrink-0" style={{ maxWidth: '100%', minWidth: 0 }}>
-                                                       <div style={{ maxWidth: '100%', minWidth: 0 }}>
-                                                           <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Asset</label>
-                                                           <input type="text" value={asset} onChange={(e) => setAsset(e.target.value)} placeholder="BTCUSD" className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 sm:py-3 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600" style={{ maxWidth: '100%', boxSizing: 'border-box' }} />
+                                                   <div className="grid grid-cols-2 gap-2.5 shrink-0">
+                                                       <div>
+                                                           <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Asset</label>
+                                                           <input type="text" value={asset} onChange={(e) => setAsset(e.target.value)} placeholder="BTCUSD" className="w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600" />
                                                        </div>
-                                                       <div style={{ maxWidth: '100%', minWidth: 0 }}>
-                                                           <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">PnL</label>
+                                                       <div>
+                                                           <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">PnL</label>
                                                            <div className="relative">
                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 dark:text-slate-500 font-bold text-xs">$</span>
-                                                               <input type="number" value={pnl} onChange={(e) => setPnl(e.target.value)} placeholder="0.00" className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-7 pr-3 py-2.5 sm:py-3 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600 ${Number(pnl) > 0 ? 'text-emerald-500' : Number(pnl) < 0 ? 'text-rose-500' : 'text-stone-900 dark:text-white'}`} style={{ maxWidth: '100%', boxSizing: 'border-box' }} />
+                                                               <input type="number" value={pnl} onChange={(e) => setPnl(e.target.value)} placeholder="0.00" className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl pl-7 pr-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none shadow-sm placeholder-stone-400 dark:placeholder-slate-600 ${Number(pnl) > 0 ? 'text-emerald-500' : Number(pnl) < 0 ? 'text-rose-500' : 'text-stone-900 dark:text-white'}`} />
                                                            </div>
                                                        </div>
                                                    </div>
 
                                                    {/* Row 3: Strategy & Session */}
-                         <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:gap-2.5 shrink-0" style={{ maxWidth: '100%', minWidth: 0 }}>
-                             <div style={{ maxWidth: '100%', minWidth: 0 }}>
-                                 <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Strategy</label>
-                                     <select value={strategy} onChange={(e) => setStrategy(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 sm:py-3 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm ${strategy === STRATEGIES[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`} style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
+                                                   <div className="grid grid-cols-2 gap-2.5 shrink-0">
+                                                       <div>
+                                                           <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Strategy</label>
+                                                           <select value={strategy} onChange={(e) => setStrategy(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm ${strategy === STRATEGIES[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
                                                               {STRATEGIES.map(s => <option key={s} value={s}>{s}</option>)}
                                                            </select>
                                                        </div>
                                                        <div>
-                                                           <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Session</label>
-                                                           <select value={session} onChange={(e) => setSession(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 sm:py-3 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm ${session === SESSIONS[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
+                                                           <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Session</label>
+                                                           <select value={session} onChange={(e) => setSession(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none truncate shadow-sm ${session === SESSIONS[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
                                                               {SESSIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                                            </select>
                                                        </div>
@@ -4854,21 +4635,21 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                    
                                                    {/* Row 4: Emotion */}
                                                    <div className="shrink-0">
-                                                       <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Emotion</label>
-                                                       <select value={emotion} onChange={(e) => setEmotion(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-2 py-2.5 sm:py-3 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none shadow-sm ${emotion === EMOTIONS[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
+                                                       <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Emotion</label>
+                                                       <select value={emotion} onChange={(e) => setEmotion(e.target.value)} className={`w-full bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl px-2 py-2.5 text-xs font-mono font-bold focus:ring-1 focus:ring-yellow-500 dark:focus:ring-bronze-500 outline-none appearance-none shadow-sm ${emotion === EMOTIONS[0] ? 'text-stone-400 dark:text-slate-600' : 'text-stone-900 dark:text-white'}`}>
                                                           {EMOTIONS.map(e => <option key={e} value={e}>{e}</option>)}
                                                        </select>
                                                    </div>
 
                                                    {/* Row 5: Did I follow my plan? */}
                                                    <div className="shrink-0">
-                                                       <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
+                                                       <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
                                                            Did I follow my plan?
                                                        </label>
                                                        <div className="flex items-center rounded-full border bg-[#1C1C1E] border-white/10 h-6 overflow-hidden">
                                                            <button 
                                                                onClick={() => setFollowedPlan(true)}
-                                                               className={`flex-1 h-full flex items-center justify-center transition-all text-[7px] sm:text-[8px] md:text-[9px] font-semibold uppercase tracking-wide ${
+                                                               className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                                                    followedPlan === true 
                                                                        ? 'bg-emerald-500 text-white' 
                                                                        : 'text-slate-600 hover:text-slate-400'
@@ -4878,7 +4659,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                            </button>
                                                            <button 
                                                                onClick={() => setFollowedPlan(false)}
-                                                               className={`flex-1 h-full flex items-center justify-center transition-all text-[7px] sm:text-[8px] md:text-[9px] font-semibold uppercase tracking-wide ${
+                                                               className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                                                    followedPlan === false 
                                                                        ? 'bg-rose-500 text-white' 
                                                                        : 'text-slate-600 hover:text-slate-400'
@@ -4891,13 +4672,13 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                                                    {/* Row 6: Revenge Trade? (for testing Patience) */}
                                                    <div className="shrink-0">
-                                                       <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
+                                                       <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">
                                                            Revenge Trade? (Test Patience)
                                                        </label>
                                                        <div className="flex items-center rounded-full border bg-[#1C1C1E] border-white/10 h-6 overflow-hidden">
                                                            <button 
                                                                onClick={() => setIsRevengeTrade(true)}
-                                                               className={`flex-1 h-full flex items-center justify-center transition-all text-[7px] sm:text-[8px] md:text-[9px] font-semibold uppercase tracking-wide ${
+                                                               className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                                                    isRevengeTrade === true 
                                                                        ? 'bg-orange-500 text-white' 
                                                                        : 'text-slate-600 hover:text-slate-400'
@@ -4907,7 +4688,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                            </button>
                                                            <button 
                                                                onClick={() => setIsRevengeTrade(false)}
-                                                               className={`flex-1 h-full flex items-center justify-center transition-all text-[7px] sm:text-[8px] md:text-[9px] font-semibold uppercase tracking-wide ${
+                                                               className={`flex-1 h-full flex items-center justify-center transition-all text-[8px] font-semibold uppercase tracking-wide ${
                                                                    isRevengeTrade === false 
                                                                        ? 'bg-stone-600 text-white' 
                                                                        : 'text-slate-600 hover:text-slate-400'
@@ -4920,7 +4701,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                                                    {/* Row 7: Notes */}
                                                    <div className="flex-col flex-1 min-h-[60px] flex mb-1">
-                                                      <label className="text-[7px] sm:text-[8px] md:text-[9px] sm:text-[9px] md:text-[10px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Notes</label>
+                                                      <label className="text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1">Notes</label>
                                                       <textarea 
                                                           value={notes} 
                                                           onChange={(e) => setNotes(e.target.value)} 
@@ -4958,7 +4739,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                   <UploadIcon 
                                                                       className={`relative z-10 w-5 h-5 ${isDragging ? 'text-yellow-600 dark:text-bronze-400 scale-110' : 'text-stone-400 dark:text-bronze-500'} transition-all duration-200 ${isDragging ? 'animate-pulse' : 'group-hover:scale-110'}`}
                                                                   />
-                                                                  <span className={`relative z-10 text-[9px] sm:text-[10px] md:text-xs font-bold ${isDragging ? 'text-yellow-700 dark:text-bronze-300' : 'text-stone-500 dark:text-bronze-500'} uppercase tracking-wide transition-colors`}>
+                                                                  <span className={`relative z-10 text-[10px] font-bold ${isDragging ? 'text-yellow-700 dark:text-bronze-300' : 'text-stone-500 dark:text-bronze-500'} uppercase tracking-wide transition-colors`}>
                                                                       {isDragging ? '✨ Drop to upload (max 3)' : '📸 Drag & drop or click to upload (max 3)'}
                                                                   </span>
                                                               </>
@@ -4986,12 +4767,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                       ))}
                                                                   </div>
                                                                   {previewUrls.length < 3 && (
-                                                                      <span className={`text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded ${isDragging ? 'text-yellow-700 dark:text-bronze-300 bg-yellow-100 dark:bg-bronze-900/30' : 'text-stone-500 dark:text-bronze-500 bg-stone-100 dark:bg-slate-800'} whitespace-nowrap transition-colors`}>
+                                                                      <span className={`text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded ${isDragging ? 'text-yellow-700 dark:text-bronze-300 bg-yellow-100 dark:bg-bronze-900/30' : 'text-stone-500 dark:text-bronze-500 bg-stone-100 dark:bg-slate-800'} whitespace-nowrap transition-colors`}>
                                                                           {previewUrls.length}/3
                                                                       </span>
                                                                   )}
                                                                   {previewUrls.length >= 3 && (
-                                                                      <span className={`text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded whitespace-nowrap`}>
+                                                                      <span className={`text-[8px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded whitespace-nowrap`}>
                                                                           MAX 3
                                                                       </span>
                                                                   )}
@@ -5005,7 +4786,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                               
                                               {/* Footer Actions - Same for both Simple and Advanced */}
                                               {viewState === 'FORM' && (
-                                              <div className="mt-auto shrink-0 px-3 sm:px-4 md:px-5 pb-5 pt-2 border-t border-transparent">
+                                              <div className="mt-auto shrink-0 px-5 pb-5 pt-2 border-t border-transparent">
                                                   <button
                                                       onClick={handleAnalyze}
                                                       disabled={!pnl || !asset || tiltMode}
@@ -5046,7 +4827,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                               </div>
                                               
                                               {/* Footer Actions for Review */}
-                                              <div className="mt-auto shrink-0 px-3 sm:px-4 md:px-5 pb-5 pt-2">
+                                              <div className="mt-auto shrink-0 px-5 pb-5 pt-2">
                                                   <div className="flex gap-3">
                                                       <button 
                                                           onClick={() => setViewState('FORM')}
@@ -5082,7 +4863,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                   <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40 p-10">
                                                       <NotebookIcon className="w-12 h-12 mb-3" />
                                                       <h4 className="font-bold text-sm uppercase tracking-widest">No Trade Logs</h4>
-                                                      <p className="text-[9px] sm:text-[10px] md:text-xs max-w-[150px] leading-relaxed mt-2">Start journaling your trades to see your history here.</p>
+                                                      <p className="text-[10px] max-w-[150px] leading-relaxed mt-2">Start journaling your trades to see your history here.</p>
                                                   </div>
                                               ) : (
                                                  <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6 pt-4 space-y-3" style={{ touchAction: 'pan-y' }}>
@@ -5117,13 +4898,13 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                       <div className="flex gap-2">
                                                                           <button 
                                                                               onClick={(e) => { e.stopPropagation(); confirmDelete(trade.id); }}
-                                                                              className="px-3 py-1.5 bg-rose-500 text-white text-[9px] sm:text-[10px] md:text-xs font-bold rounded-lg hover:bg-rose-600 transition-colors shadow-lg uppercase"
+                                                                              className="px-3 py-1.5 bg-rose-500 text-white text-[10px] font-bold rounded-lg hover:bg-rose-600 transition-colors shadow-lg uppercase"
                                                                           >
                                                                               Yes
                                                                           </button>
                                                                           <button 
                                                                               onClick={(e) => { e.stopPropagation(); setDeleteConfirmationId(null); }}
-                                                                              className="px-3 py-1.5 bg-white dark:bg-slate-800 text-stone-900 dark:text-white text-[9px] sm:text-[10px] md:text-xs font-bold rounded-lg border border-stone-200 dark:border-slate-700 hover:bg-stone-50 dark:hover:bg-slate-700 transition-colors uppercase"
+                                                                              className="px-3 py-1.5 bg-white dark:bg-slate-800 text-stone-900 dark:text-white text-[10px] font-bold rounded-lg border border-stone-200 dark:border-slate-700 hover:bg-stone-50 dark:hover:bg-slate-700 transition-colors uppercase"
                                                                           >
                                                                               Cancel
                                                                           </button>
@@ -5158,9 +4939,9 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                                                                   <div className={`p-1 rounded border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-stone-200 border-stone-300'}`}>
                                                                                       <SparklesIcon className={`w-2.5 h-2.5 ${isDarkMode ? 'text-bronze-500' : 'text-yellow-500'}`} />
                                                                                   </div>
-                                                                                  <span className={`text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>AI Mentor Insight</span>
+                                                                                  <span className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>AI Mentor Insight</span>
                                                                               </div>
-                                                                              <div className={`text-[9px] sm:text-[10px] md:text-xs font-mono opacity-0 group-hover/insight:opacity-100 transition-opacity ${isDarkMode ? 'text-slate-600' : 'text-stone-400'}`}>
+                                                                              <div className={`text-[10px] font-mono opacity-0 group-hover/insight:opacity-100 transition-opacity ${isDarkMode ? 'text-slate-600' : 'text-stone-400'}`}>
                                                                                   {expandedInsights.has(trade.id) ? 'COLLAPSE' : 'EXPAND'}
                                                                               </div>
                                                                           </div>
@@ -5185,361 +4966,10 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                  </div>
              </div>
 
-             {/* REMOVED: Duplicate DeconstructorPanel instance causing state isolation
-                 The mobile deconstructor is already handled in the main mobile MECCA tab above (line 3912).
-                 This duplicate was causing state synchronization issues where photos uploaded
-                 in one instance weren't visible to the brain button in another instance.
-                 
-                 The "1/5" display was coming from this duplicate instance, but the brain button
-                 was in the main instance, so they had separate state.
-             */}
-             {/* Mecca XX Deconstructor - Mobile Only, Just Above Bottom Nav - DISABLED DUPLICATE */}
-             {false && activeTab === 'MECCA' && (
-               <div 
-                 className="absolute bottom-0 left-0 right-0 z-[59] lg:hidden"
-                 style={{ 
-                   paddingBottom: `calc(max(1.5rem, env(safe-area-inset-bottom, 0px)) + 5.5rem)`, // Space for bottom nav
-                   pointerEvents: 'auto',
-                 }}
-               >
-                 <div className="px-4 sm:px-5 pb-3">
-                   {/* Deconstruct SpotlightCard - Pre-analyzing button */}
-                   <DeconstructorPanel isDarkMode={isDarkMode}>
-                     {(context) => {
-                       const { galleryPhotos, fileInputRef, handleDeconstruct, isAnalyzing, removePhoto, handleFileUpload } = context;
-                       const hasPhotos = galleryPhotos.length > 0;
-                       const maxPhotos = 5;
-                       
-                       // Always show SpotlightCard with upload interface
-                       return (
-                         <>
-                           <SpotlightCard 
-                             variant="journal" 
-                             className="w-full"
-                             isDarkMode={isDarkMode}
-                             noPadding={false}
-                             style={{
-                               padding: '0',
-                               background: isDarkMode 
-                                 ? 'linear-gradient(135deg, rgba(10, 10, 10, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%)'
-                                 : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 250, 250, 0.95) 100%)',
-                               border: `1px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.3)'}`,
-                               boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px ${isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.15)'}, inset 0 1px 0 ${isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.8)'}`,
-                             }}
-                           >
-                             {/* Beautiful Photo Upload Area with Photo Preview Section */}
-                             <div
-                               className="relative w-full flex flex-col h-full"
-                               style={{
-                                 minHeight: '276px', // Match the DOM height
-                               }}
-                             >
-                               {/* Top Section - Text Content (5/6 of space) */}
-                               <div
-                                 onClick={(e) => {
-                                   e.stopPropagation();
-                                   if (!hasPhotos && fileInputRef.current) {
-                                     fileInputRef.current.click();
-                                   }
-                                 }}
-                                 onDragOver={(e) => {
-                                   e.preventDefault();
-                                   e.stopPropagation();
-                                 }}
-                                 onDrop={async (e) => {
-                                   e.preventDefault();
-                                   e.stopPropagation();
-                                   if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                     const files = Array.from(e.dataTransfer.files);
-                                     const remainingSlots = maxPhotos - galleryPhotos.length;
-                                     const filesToAdd = files.slice(0, remainingSlots);
-                                     
-                                     // Create a FileList-like object for handleFileUpload
-                                     const dataTransfer = new DataTransfer();
-                                     filesToAdd.forEach(file => dataTransfer.items.add(file));
-                                     
-                                     // Call handleFileUpload directly
-                                     await handleFileUpload(dataTransfer.files);
-                                   }
-                                 }}
-                                 className="relative flex-1 flex flex-col items-center justify-center text-center group overflow-hidden"
-                                 style={{
-                                   padding: '1.5rem',
-                                   background: isDarkMode
-                                     ? 'linear-gradient(135deg, rgba(20, 20, 20, 0.6) 0%, rgba(10, 10, 10, 0.6) 100%)'
-                                     : 'linear-gradient(135deg, rgba(250, 250, 250, 0.6) 0%, rgba(240, 240, 240, 0.6) 100%)',
-                                   WebkitTapHighlightColor: 'transparent',
-                                   cursor: hasPhotos ? 'default' : 'pointer',
-                                 }}
-                               >
-                                 {/* Animated background gradient on hover */}
-                                 {!hasPhotos && (
-                                   <div 
-                                     className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                                     style={{
-                                       background: `linear-gradient(135deg, ${neonColors.emerald}10 0%, ${neonColors.emeraldDark}05 100%)`,
-                                     }}
-                                   />
-                                 )}
-                                 
-                                 {/* Content */}
-                                 <div className="relative z-10 flex flex-col items-center justify-center">
-                                   {/* Icon Container with Glow */}
-                                   {!hasPhotos && (
-                                     <div 
-                                       className="relative mb-3 sm:mb-4"
-                                     >
-                                       <div 
-                                         className="absolute inset-0 rounded-full blur-xl opacity-30 group-hover:opacity-50 transition-opacity duration-300"
-                                         style={{
-                                           background: `radial-gradient(circle, ${neonColors.emerald} 0%, transparent 70%)`,
-                                           transform: 'scale(1.5)',
-                                         }}
-                                       />
-                                       <div 
-                                         className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
-                                         style={{
-                                           background: `linear-gradient(135deg, ${neonColors.emerald}20 0%, ${neonColors.emeraldDark}10 100%)`,
-                                           border: `2px solid ${neonColors.emerald}40`,
-                                           boxShadow: `0 0 20px ${neonColors.emeraldGlow}40, inset 0 0 10px ${neonColors.emeraldGlow}20`,
-                                         }}
-                                       >
-                                         <ImageIcon 
-                                           className="w-6 h-6 sm:w-8 sm:h-8 transition-transform duration-300 group-hover:scale-110" 
-                                           style={{ color: neonColors.emerald }}
-                                         />
-                                       </div>
-                                     </div>
-                                   )}
-                                   
-                                  {/* Main Text - Replace with Deconstruct text when photos exist */}
-                                  <div className="relative z-10 flex flex-col items-center justify-center">
-                                    {hasPhotos ? (
-                                      isAnalyzing ? (
-                                        <span className="flex items-center justify-center gap-2">
-                                          <Loader2 className="w-4 h-4 animate-spin" style={{ color: neonColors.emerald }} />
-                                          <span 
-                                            className="text-sm sm:text-base font-bold"
-                                            style={{
-                                              background: 'linear-gradient(135deg, #000000 0%, #22c55e 50%, #000000 100%)',
-                                              WebkitBackgroundClip: 'text',
-                                              WebkitTextFillColor: 'transparent',
-                                              backgroundClip: 'text',
-                                            }}
-                                          >
-                                            ANALYZING {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}...
-                                          </span>
-                                        </span>
-                                      ) : (
-                                        <span 
-                                          className="text-sm sm:text-base font-bold"
-                                          style={{
-                                            background: 'linear-gradient(135deg, #000000 0%, #22c55e 30%, #000000 60%, #22c55e 90%, #000000 100%)',
-                                            WebkitBackgroundClip: 'text',
-                                            WebkitTextFillColor: 'transparent',
-                                            backgroundClip: 'text',
-                                            backgroundSize: '200% 100%',
-                                            animation: 'gradient-shift 3s ease-in-out infinite',
-                                            userSelect: 'none',
-                                            pointerEvents: 'none',
-                                          }}
-                                        >
-                                          DECONSTRUCT {galleryPhotos.length} PHOTO{galleryPhotos.length !== 1 ? 'S' : ''}
-                                        </span>
-                                      )
-                                    ) : (
-                                      <span 
-                                        className="text-sm sm:text-base font-bold"
-                                        style={{
-                                          background: 'linear-gradient(135deg, #000000 0%, #22c55e 30%, #000000 60%, #22c55e 90%, #000000 100%)',
-                                          WebkitBackgroundClip: 'text',
-                                          WebkitTextFillColor: 'transparent',
-                                          backgroundClip: 'text',
-                                          backgroundSize: '200% 100%',
-                                          animation: 'gradient-shift 3s ease-in-out infinite',
-                                          userSelect: 'none',
-                                          pointerEvents: 'none',
-                                        }}
-                                      >
-                                        DECONSTRUCT
-                                      </span>
-                                    )}
-                                  </div>
-                                   </div>
-                                   
-                                   {/* Shimmer effect on hover - Only when no photos */}
-                                   {!hasPhotos && (
-                                     <div 
-                                       className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                                       style={{
-                                         background: 'linear-gradient(90deg, transparent 0%, rgba(34, 197, 94, 0.1) 50%, transparent 100%)',
-                                         animation: 'shimmer 2s infinite',
-                                       }}
-                                     />
-                                   )}
-                                 </div>
-                                 
-                                {/* Bottom Section - Photo Preview Area (Chart Snapshot Style) */}
-                                <div className="shrink-0">
-                                  <label className="text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-widest opacity-60 mb-1 block ml-1" style={{ color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }}>
-                                    Photo Snapshot
-                                  </label>
-                                  <div 
-                                    onClick={() => {
-                                      if (fileInputRef.current) {
-                                        fileInputRef.current.click();
-                                      }
-                                    }}
-                                    onDragEnter={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                    }}
-                                    onDragOver={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                    }}
-                                    onDragLeave={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                    }}
-                                    onDrop={async (e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                        const files = Array.from(e.dataTransfer.files);
-                                        const remainingSlots = maxPhotos - galleryPhotos.length;
-                                        const filesToAdd = files.slice(0, remainingSlots);
-                                        
-                                        if (filesToAdd.length < files.length) {
-                                          console.warn(`Only ${remainingSlots} more photo(s) can be added. Maximum is ${maxPhotos}.`);
-                                        }
-                                        
-                                        const dataTransfer = new DataTransfer();
-                                        filesToAdd.forEach(file => dataTransfer.items.add(file));
-                                        await handleFileUpload(dataTransfer.files);
-                                      }
-                                    }}
-                                    className={`relative w-full h-12 border-2 ${galleryPhotos.length > 0 ? 'border-solid' : 'border-dashed'} rounded-xl flex items-center ${galleryPhotos.length > 0 ? 'justify-between px-4' : 'justify-center gap-3'} cursor-pointer transition-all duration-200 group overflow-hidden`}
-                                    style={{
-                                      background: galleryPhotos.length > 0 
-                                        ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.125) 0%, rgba(22, 163, 74, 0.063) 100%)'
-                                        : 'linear-gradient(135deg, rgba(34, 197, 94, 0.125) 0%, rgba(22, 163, 74, 0.063) 100%)',
-                                      borderColor: galleryPhotos.length > 0
-                                        ? 'rgba(34, 197, 94, 0.25)'
-                                        : 'rgba(34, 197, 94, 0.25)',
-                                    }}
-                                  >
-                                    {galleryPhotos.length === 0 ? (
-                                      <>
-                                        <UploadIcon 
-                                          className={`relative z-10 w-5 h-5 transition-all duration-200 group-hover:scale-110`}
-                                          style={{ color: 'rgb(34, 197, 94)' }}
-                                        />
-                                        <span className={`relative z-10 text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-wide transition-colors`} style={{ color: 'rgb(34, 197, 94)' }}>
-                                          Click to upload photo
-                                        </span>
-                                      </>
-                                    ) : (
-                                      <div className="flex items-center gap-2 w-full relative z-10">
-                                        <div className="flex items-center gap-1.5 flex-1 overflow-x-auto scrollbar-hide">
-                                          {galleryPhotos.slice(0, maxPhotos).map((photo, index) => (
-                                            <div key={photo.id} className="relative shrink-0 group/image">
-                                              <div className="h-8 w-12 rounded-lg bg-stone-100 dark:bg-black/50 overflow-hidden border-2 border-stone-200 dark:border-slate-700 group-hover/image:border-emerald-400 dark:group-hover/image:border-emerald-400 transition-colors shadow-sm">
-                                                <img src={photo.thumbnailUrl || photo.url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover pointer-events-none" />
-                                              </div>
-                                              <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  e.preventDefault();
-                                                  removePhoto(photo.id);
-                                                }}
-                                                className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold transition-all shadow-md hover:scale-110 active:scale-95 z-20"
-                                                title="Remove image"
-                                              >
-                                                ×
-                                              </button>
-                                            </div>
-                                          ))}
-                                        </div>
-                                        {galleryPhotos.length < maxPhotos && (
-                                          <span className={`text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 whitespace-nowrap transition-colors`}>
-                                            {galleryPhotos.length}/{maxPhotos}
-                                          </span>
-                                        )}
-                                        {galleryPhotos.length >= maxPhotos && (
-                                          <span className={`text-[7px] sm:text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded whitespace-nowrap`}>
-                                            MAX {maxPhotos}
-                                          </span>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                               </div>
-                           </SpotlightCard>
-                           
-                           {/* Description - Only show when no photos, outside SpotlightCard */}
-                           {!hasPhotos && (
-                             <>
-                               <p 
-                                 className="text-[10px] sm:text-xs mb-2 max-w-xs mx-auto leading-relaxed mt-2"
-                                 style={{ 
-                                   color: isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
-                                 }}
-                               >
-                                 Upload up to 5 screenshots to analyze your trading performance
-                               </p>
-                             </>
-                           )}
-                           
-                           {/* Hidden file input - using same context */}
-                           <input
-                             ref={fileInputRef}
-                             type="file"
-                             multiple
-                             accept="image/*"
-                             className="hidden"
-                             onChange={async (e) => {
-                               if (e.target.files && e.target.files.length > 0) {
-                                 const files = Array.from(e.target.files);
-                                 const remainingSlots = maxPhotos - galleryPhotos.length;
-                                 const filesToAdd = files.slice(0, remainingSlots);
-                                 
-                                 if (filesToAdd.length < files.length) {
-                                   console.warn(`Only ${remainingSlots} more photo(s) can be added. Maximum is ${maxPhotos}.`);
-                                 }
-                                 
-                                 // Create a FileList-like object for handleFileUpload
-                                 const dataTransfer = new DataTransfer();
-                                 filesToAdd.forEach(file => dataTransfer.items.add(file));
-                                 
-                                 // Call handleFileUpload directly
-                                 await handleFileUpload(dataTransfer.files);
-                                 
-                                 // Reset input to allow selecting the same file again
-                                 if (fileInputRef.current) {
-                                   fileInputRef.current.value = '';
-                                 }
-                               }
-                             }}
-                           />
-                         </>
-                       );
-                     }}
-                   </DeconstructorPanel>
-                 </div>
-               </div>
-             )}
-
              {/* Mobile Bottom Nav */}
              <div 
-                 className={`absolute bottom-0 left-0 right-0 z-[60] lg:hidden px-6 pt-2`}
-                 style={{ 
-                   paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px))',
-                   background: 'transparent',
-                   pointerEvents: 'auto',
-                 }}
+                 className={`absolute bottom-0 left-0 right-0 z-50 lg:hidden px-6 pt-2 bg-gradient-to-t ${isDarkMode ? 'from-[#050505] via-[#050505]/90 to-transparent' : 'from-[#F0F0F0] via-[#F0F0F0]/90 to-transparent'}`}
+                 style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px))' }}
                  onTouchStart={(e) => {
                      e.stopPropagation();
                  }}
@@ -5550,12 +4980,12 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                      e.stopPropagation();
                  }}
              >
-                <div className={`flex items-center justify-around p-1.5 sm:p-2 rounded-2xl border ${isDarkMode ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-black/5'} shadow-2xl`}>
+                <div className={`flex items-center justify-around p-2 rounded-2xl border ${isDarkMode ? 'bg-[#1C1C1E] border-white/10' : 'bg-white border-black/5'} shadow-2xl`}>
                     {NAV_ITEMS.map((item) => (
                          <button
                             key={item.id} 
                             onClick={() => handleTabChange(item.id)}
-                            className={`p-2.5 sm:p-3 rounded-xl flex items-center justify-center transition-all duration-300 min-h-[44px] sm:min-h-[48px] min-w-[44px] sm:min-w-[48px] ${
+                            className={`p-3 rounded-xl flex items-center justify-center transition-all duration-300 ${
                                 activeTab === item.id 
                                 ? `border ${isDarkMode ? 'border-emerald-400/50 bg-gradient-to-br from-yellow-400/10 to-emerald-400/10 shadow-[0_0_15px_rgba(52,211,153,0.15)]' : 'border-emerald-500/50 bg-gradient-to-br from-yellow-400/10 to-emerald-400/10'}`
                                 : 'opacity-60 hover:opacity-100 border border-transparent'
@@ -5567,218 +4997,8 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
              </div>
         </div>
       </div>
-
-      {/* Pro Analysis Modal - Render directly from JournalXXComponent for history page */}
-      {typeof document !== 'undefined' && showProModal && selectedAnalysis && createPortal(
-        (() => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'JournalXXComponent.tsx:5223',message:'DIRECT PORTAL RENDERING from JournalXX',data:{showProModal,hasAnalysis:!!selectedAnalysis,analysisKeys:selectedAnalysis?Object.keys(selectedAnalysis):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'direct-modal',hypothesisId:'G'})}).catch(()=>{});
-          // #endregion
-          console.log('[JournalXX] Rendering ProAnalysisModal directly via portal', {
-            showProModal,
-            hasAnalysis: !!selectedAnalysis,
-            analysisKeys: selectedAnalysis ? Object.keys(selectedAnalysis) : [],
-          });
-          return (
-            <ProAnalysisModal
-              isOpen={showProModal}
-              onClose={() => {
-                console.log('[JournalXX] Modal onClose called (direct portal)');
-                setShowProModal(false);
-                setSelectedAnalysis(null);
-              }}
-              analysis={selectedAnalysis}
-              isLoading={false}
-              error={null}
-              displaySymbol={selectedAnalysis?.symbol || 'Unknown'}
-            />
-          );
-        })(),
-        document.body
-      )}
-
     </div>
   );
 };
 
 export default JournalXX;
-
-// CSS Animations for Brain Animation in MECCA tab
-const brainAnimationStyles = `
-  @keyframes pulse-ring {
-    0%, 100% {
-      transform: scale(1);
-      opacity: 0.3;
-    }
-    50% {
-      transform: scale(1.2);
-      opacity: 0.1;
-    }
-  }
-  @keyframes rotate-slow {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  }
-  @keyframes pulse-symbol {
-    0%, 100% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.1);
-    }
-  }
-  @keyframes brain-think {
-    0%, 100% {
-      transform: scale(1) rotate(0deg);
-      opacity: 1;
-    }
-    25% {
-      transform: scale(1.05) rotate(-2deg);
-      opacity: 0.9;
-    }
-    50% {
-      transform: scale(1.1) rotate(0deg);
-      opacity: 1;
-    }
-    75% {
-      transform: scale(1.05) rotate(2deg);
-      opacity: 0.9;
-    }
-  }
-  @keyframes gradient-shift {
-    0%, 100% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-  }
-  @keyframes shimmer {
-    0% {
-      transform: translateX(-100%);
-    }
-    100% {
-      transform: translateX(100%);
-    }
-  }
-  @keyframes pulse-ring-ai {
-    0%, 100% {
-      transform: scale(1);
-      opacity: 0.8;
-    }
-    50% {
-      transform: scale(1.15);
-      opacity: 1;
-    }
-  }
-  @keyframes rotate-slow-ai {
-    from {
-      transform: rotate(0deg) scale(1);
-    }
-    to {
-      transform: rotate(360deg) scale(1.05);
-    }
-  }
-  @keyframes pulse-symbol-ai {
-    0%, 100% {
-      transform: scale(1.2);
-      box-shadow: 0 0 100px rgba(34, 197, 94, 0.6), inset 0 0 50px rgba(34, 197, 94, 0.4);
-    }
-    50% {
-      transform: scale(1.3);
-      box-shadow: 0 0 120px rgba(34, 197, 94, 0.8), inset 0 0 60px rgba(34, 197, 94, 0.6);
-    }
-  }
-  @keyframes brain-think-ai {
-    0%, 100% {
-      transform: scale(1.15) rotate(0deg);
-      filter: drop-shadow(0 0 20px rgba(34, 197, 94, 0.8)) brightness(1.5);
-    }
-    25% {
-      transform: scale(1.2) rotate(-3deg);
-      filter: drop-shadow(0 0 25px rgba(34, 197, 94, 1)) brightness(1.6);
-    }
-    50% {
-      transform: scale(1.25) rotate(0deg);
-      filter: drop-shadow(0 0 30px rgba(34, 197, 94, 1)) brightness(1.7);
-    }
-    75% {
-      transform: scale(1.2) rotate(3deg);
-      filter: drop-shadow(0 0 25px rgba(34, 197, 94, 1)) brightness(1.6);
-    }
-  }
-  @keyframes holographicRotate {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  }
-  @keyframes neuralPulse {
-    0%, 100% {
-      opacity: 0.2;
-    }
-    50% {
-      opacity: 0.5;
-    }
-  }
-  @keyframes particlePulse {
-    0%, 100% {
-      transform: scale(1);
-      opacity: 0.6;
-    }
-    50% {
-      transform: scale(1.5);
-      opacity: 1;
-    }
-  }
-  @keyframes dataPulse {
-    0%, 100% {
-      opacity: 0.6;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 1;
-      transform: scale(1.3);
-    }
-  }
-  @keyframes dataStream {
-    0% {
-      transform: translateY(-100px);
-      opacity: 0;
-    }
-    50% {
-      opacity: 0.6;
-    }
-    100% {
-      transform: translateY(300px);
-      opacity: 0;
-    }
-  }
-  @keyframes aiTextPulse {
-    0%, 100% {
-      opacity: 0.9;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 1;
-      transform: scale(1.02);
-    }
-  }
-`;
-
-// Inject styles into document head if not already present
-if (typeof document !== 'undefined') {
-  const styleId = 'mecca-brain-animations';
-  if (!document.getElementById(styleId)) {
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = brainAnimationStyles;
-    document.head.appendChild(style);
-  }
-}

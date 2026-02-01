@@ -418,7 +418,7 @@ const MeccaAnalysisHub: React.FC = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.05 }}
                         className="p-4 rounded-xl bg-muted/30 border border-muted-foreground/10 cursor-pointer hover:bg-violet-50/50 hover:border-violet-200/50 transition-all mecca-touch-button group"
-                        onClick={() => { setMeccaPageTab('history'); requestAnimationFrame(() => setSelectedHistoryItem(analysis)); }}
+                        onClick={() => setSelectedHistoryItem(analysis)}
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex-1 min-w-0">
@@ -837,7 +837,7 @@ const MeccaAnalysisHub: React.FC = () => {
                   y: 0
                 }} transition={{
                   delay: index * 0.1
-                }} onClick={() => { setMeccaPageTab('history'); requestAnimationFrame(() => setSelectedHistoryItem(analysis)); }}>
+                }} onClick={() => setSelectedHistoryItem(analysis)}>
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">

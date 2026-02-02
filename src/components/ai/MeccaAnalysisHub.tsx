@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import './MeccaResponsive.css';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, Brain, Zap, TrendingUp, Target, Shield, ChevronRight, Scan, Activity, Menu, X, Clock, AlertCircle } from 'lucide-react';
+import { Upload, Brain, Zap, TrendingUp, Target, Shield, ChevronRight, Scan, Activity, Menu, X, Clock, AlertCircle, Home, RefreshCw, Settings } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -85,7 +85,8 @@ const MeccaAnalysisHub: React.FC = () => {
 
   // COST OPTIMIZED: Agent outputs disabled - Analysis history disabled
   const {
-    data: analysisHistory = []
+    data: analysisHistory = [],
+    refetch: refetchAnalysisHistory
   } = useQuery({
     queryKey: ['analysis-history-disabled', user?.id],
     queryFn: async () => {
@@ -359,30 +360,69 @@ const MeccaAnalysisHub: React.FC = () => {
                 </p>
               </div>
             </div>
-            {/* Deconstructor | History tabs - modal shows on the active tab */}
-            <div className="flex rounded-lg border border-violet-200/30 bg-violet-500/5 p-0.5">
-              <button
-                type="button"
-                onClick={() => setMeccaPageTab('deconstructor')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-                  meccaPageTab === 'deconstructor'
-                    ? 'bg-violet-500 text-white shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-violet-500/10'
-                }`}
-              >
-                Deconstructor
-              </button>
-              <button
-                type="button"
-                onClick={() => setMeccaPageTab('history')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-                  meccaPageTab === 'history'
-                    ? 'bg-violet-500 text-white shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-violet-500/10'
-                }`}
-              >
-                History
-              </button>
+            {/* Right side: Action buttons + Tabs */}
+            <div className="flex items-center gap-2">
+              {/* Action buttons: Home (replaces Copy), Refresh, Settings */}
+              <div className="flex items-center gap-2 mr-2">
+                {/* Home button - navigates to Deconstructor page */}
+                <button
+                  type="button"
+                  onClick={() => setMeccaPageTab('deconstructor')}
+                  className="p-2 rounded-lg transition-all hover:bg-violet-500/10 text-muted-foreground hover:text-violet-500"
+                  title="Go to Deconstructor"
+                >
+                  <Home className="w-5 h-5" />
+                </button>
+                {/* Refresh button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Refresh analysis history
+                    refetchAnalysisHistory();
+                  }}
+                  className="p-2 rounded-lg transition-all hover:bg-violet-500/10 text-muted-foreground hover:text-violet-500"
+                  title="Refresh"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+                {/* Settings button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Settings functionality can be added here
+                    console.log('Settings clicked');
+                  }}
+                  className="p-2 rounded-lg transition-all hover:bg-violet-500/10 text-muted-foreground hover:text-violet-500"
+                  title="Settings"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+              </div>
+              {/* Deconstructor | History tabs - modal shows on the active tab */}
+              <div className="flex rounded-lg border border-violet-200/30 bg-violet-500/5 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setMeccaPageTab('deconstructor')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    meccaPageTab === 'deconstructor'
+                      ? 'bg-violet-500 text-white shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-violet-500/10'
+                  }`}
+                >
+                  Deconstructor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMeccaPageTab('history')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    meccaPageTab === 'history'
+                      ? 'bg-violet-500 text-white shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-violet-500/10'
+                  }`}
+                >
+                  History
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -392,12 +432,18 @@ const MeccaAnalysisHub: React.FC = () => {
       <div className="container mx-auto px-4 sm:px-6 py-1 sm:py-2">
         {meccaPageTab === 'history' ? (
           /* History Page - full-width analysis list; modal shows on this page when View analysis clicked */
-          <div className="min-h-[60vh]">
+          <div className="w-full">
             <Card className="mecca-panel mecca-glass p-4 sm:p-6">
-              <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-violet-500" />
-                Analysis History
-              </h3>
+              <div className="mb-4">
+                <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-violet-500" />
+                  Analysis History
+                </h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  <AlertCircle className="w-3 h-3 inline mr-1" />
+                  Note: AI analysis may vary slightly for the same screenshot as it considers your trading history, profile, and evolving patterns. Each analysis is personalized to your current context.
+                </p>
+              </div>
               {analysisHistory.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Activity className="w-12 h-12 text-muted-foreground/50 mb-3" />
@@ -408,38 +454,88 @@ const MeccaAnalysisHub: React.FC = () => {
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[70vh] overflow-y-auto">
+                <div className="space-y-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 160px)' }}>
                   {analysisHistory.map((analysis, index) => {
                     const analysisData = typeof analysis.output_text === 'string' ? (() => { try { return JSON.parse(analysis.output_text); } catch { return {}; } })() : analysis.output_text;
+                    // Get screenshot thumbnail from multiple sources: metadata, output_text, or analysisData
+                    const thumbnailUrl = analysis.metadata?.screenshot_urls?.[0] 
+                      || analysis.metadata?.screenshot_url 
+                      || analysisData?.screenshot_urls?.[0] 
+                      || analysisData?.screenshot_url 
+                      || analysisData?.metadata?.screenshot_urls?.[0]
+                      || analysisData?.metadata?.screenshot_url
+                      || null;
+                    // Get grade from risk score
+                    const riskScore = analysisData?.risk_assessment?.risk_score ?? analysisData?.performance_metrics?.risk_score;
+                    const grade = riskScore >= 8 ? 'A+' : riskScore >= 7 ? 'A' : riskScore >= 6 ? 'B+' : riskScore >= 5 ? 'B' : riskScore >= 4 ? 'B-' : riskScore >= 3 ? 'C' : 'D';
+                    const gradeColor = grade.startsWith('A') ? 'emerald' : grade.startsWith('B') ? 'yellow' : grade.startsWith('C') ? 'orange' : 'red';
+                    const imageCount = analysisData?.screenshot_analysis?.images_processed || analysis.metadata?.image_count || 1;
+                    
                     return (
                       <motion.div
                         key={analysis.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className="p-4 rounded-xl bg-muted/30 border border-muted-foreground/10 cursor-pointer hover:bg-violet-50/50 hover:border-violet-200/50 transition-all mecca-touch-button group"
+                        className={`p-4 rounded-xl bg-muted/30 border-2 border-${gradeColor}-500/30 cursor-pointer hover:bg-violet-50/50 hover:border-violet-400/50 transition-all mecca-touch-button group`}
                         onClick={() => setSelectedHistoryItem(analysis)}
                       >
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          {/* Screenshot thumbnail - always show container */}
+                          <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden flex-shrink-0 border border-muted-foreground/20 bg-gradient-to-br from-violet-500/10 to-purple-500/10 flex items-center justify-center">
+                            {thumbnailUrl ? (
+                              <>
+                                <img 
+                                  src={thumbnailUrl} 
+                                  alt="Analysis screenshot" 
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    // Hide image on error, show placeholder instead
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                                {imageCount > 1 && (
+                                  <div className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
+                                    +{imageCount}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="flex flex-col items-center justify-center text-muted-foreground/40">
+                                <Activity className="w-6 h-6 sm:w-8 sm:h-8 mb-1" />
+                                <span className="text-[10px] sm:text-xs">No image</span>
+                              </div>
+                            )}
+                          </div>
+                          {/* Content */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <Badge variant="secondary" className="text-xs">
-                                {analysisData?.screenshot_analysis?.images_processed || 'N/A'} images
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              <Badge variant="secondary" className={`text-xs bg-${gradeColor}-500/20 text-${gradeColor}-600 border-${gradeColor}-500/30`}>
+                                <Brain className="w-3 h-3 mr-1" />
+                                {grade}
                               </Badge>
                               <span className="text-xs font-medium text-violet-600">
                                 {new Date(analysis.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                               </span>
                             </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {analysisData?.trader_behavior?.experience_level || 'Analysis'} • {analysisData?.risk_assessment?.risk_score ?? 'N/A'}/10 risk
+                            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                              {analysisData?.overall_analysis?.substring(0, 150) || analysisData?.trader_behavior?.experience_level || 'Analysis'} {analysisData?.overall_analysis?.length > 150 ? '...' : ''}
                             </p>
-                            <p className="text-emerald-600 text-sm font-medium mt-1 group-hover:underline">View analysis →</p>
+                            <p className="text-emerald-600 text-sm font-medium group-hover:underline">View analysis →</p>
                           </div>
-                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-violet-500 transition-colors flex-shrink-0" />
+                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-violet-500 transition-colors flex-shrink-0 mt-2" />
                         </div>
                       </motion.div>
                     );
                   })}
+                  {/* Spacer to ensure last item is above bottom nav - accounts for fixed bottom nav (72px) + safe area + extra padding */}
+                  <div 
+                    className="w-full" 
+                    style={{ 
+                      height: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+                      minHeight: '80px'
+                    }} 
+                  />
                 </div>
               )}
             </Card>

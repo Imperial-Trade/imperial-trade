@@ -411,6 +411,13 @@ const InsightHistoryPage: React.FC<InsightHistoryPageProps> = ({
         [data-radix-select-trigger]:active {
           transform: scale(0.98) !important;
         }
+        /* Ensure smooth scrolling */
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
       `}</style>
       
       <div 
@@ -1037,11 +1044,14 @@ const InsightHistoryPage: React.FC<InsightHistoryPageProps> = ({
 
       {/* Content - Scrollable - Edge to edge */}
       <div 
-        className="flex-1 min-h-0 overflow-hidden"
+        className="flex-1 min-h-0"
         style={{
           height: 'calc(100% - max(4.5rem, calc(4.5rem + env(safe-area-inset-bottom, 0px))))', // Account for bottom nav (64px = 4rem) + tiny gap (0.5rem = 8px) + safe area
           maxHeight: 'calc(100% - max(4.5rem, calc(4.5rem + env(safe-area-inset-bottom, 0px))))',
           minHeight: 0,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {isLoading ? (
@@ -1083,16 +1093,20 @@ const InsightHistoryPage: React.FC<InsightHistoryPageProps> = ({
             }}
           >
             <div 
-              className="flex flex-col w-full gap-3" 
+              className="flex flex-col w-full gap-3 px-4" 
               style={{ 
                 flex: '1 1 0',
                 minHeight: 0,
+                height: '100%',
                 maxHeight: '100%',
                 paddingBottom: '2rem',
+                paddingTop: '1rem',
                 overflowY: 'auto', // Only this div scrolls
                 overflowX: 'hidden',
                 WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
                 position: 'relative',
+                scrollbarWidth: 'thin',
+                scrollbarColor: isDarkMode ? 'rgba(255,255,255,0.2) transparent',
               }}
             >
               {filteredAnalyses.map((item, index) => {
@@ -1109,78 +1123,140 @@ const InsightHistoryPage: React.FC<InsightHistoryPageProps> = ({
                 const convictionGrade = analysis.tradeSetup?.convictionGrade || 'F';
                 const executiveSummary = analysis.executiveSummary || 'No summary available';
 
+                // Get grade color for thumbnail border
+                const getGradeColor = (grade: string) => {
+                  if (grade.startsWith('A')) return '#22c55e'; // Green
+                  if (grade.startsWith('B')) return '#eab308'; // Gold/Yellow
+                  if (grade.startsWith('C')) return '#f59e0b'; // Orange
+                  return '#ef4444'; // Red for D/F
+                };
+                const gradeColor = getGradeColor(convictionGrade);
+
                 return (
                   <div
                     key={item.id}
-                    className="w-full"
+                    className="w-full flex gap-3"
                     style={{
                       background: isDarkMode ? '#050505' : '#F0F0F0', // Same monochrome color as page background
                       borderRadius: '0.75rem', // Rounded corners
                       padding: '1rem',
                     }}
                   >
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-1.5">
-                        <Brain className="w-3.5 h-3.5" style={{ color: greenAccent.primary }} />
-                        <span className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>
-                          {item.symbol} • {item.timeframe} • {getTradingStyleLabel(item.trading_style)}
+                    {/* Thumbnail Image Section */}
+                    <div className="flex-shrink-0">
+                      <div
+                        className="w-20 h-20 rounded-lg overflow-hidden relative"
+                        style={{
+                          border: `2px solid ${gradeColor}`,
+                          background: isDarkMode ? '#1a1a1a' : '#e5e5e5',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {/* Placeholder chart thumbnail - you can replace this with actual chart image if available */}
+                        <div className="w-full h-full relative">
+                          {/* Simple chart visualization placeholder */}
+                          <svg width="100%" height="100%" viewBox="0 0 80 80" preserveAspectRatio="none">
+                            <defs>
+                              <linearGradient id={`gradient-${item.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style={{ stopColor: gradeColor, stopOpacity: 0.3 }} />
+                                <stop offset="100%" style={{ stopColor: gradeColor, stopOpacity: 0.1 }} />
+                              </linearGradient>
+                            </defs>
+                            {/* Simple line chart representation */}
+                            <polyline
+                              points={`10,60 20,50 30,55 40,45 50,40 60,35 70,30`}
+                              fill="none"
+                              stroke={gradeColor}
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <polygon
+                              points={`10,60 20,50 30,55 40,45 50,40 60,35 70,30 70,80 10,80`}
+                              fill={`url(#gradient-${item.id})`}
+                            />
+                          </svg>
+                          {/* Grade badge overlay */}
+                          <div
+                            className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-bold"
+                            style={{
+                              background: gradeColor,
+                              color: '#000',
+                            }}
+                          >
+                            {convictionGrade}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Content Section */}
+                    <div className="flex-1 min-w-0">
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1.5">
+                          <Brain className="w-3.5 h-3.5 flex-shrink-0" style={{ color: greenAccent.primary }} />
+                          <span className={`text-xs font-bold truncate ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>
+                            {item.symbol} • {item.timeframe} • {getTradingStyleLabel(item.trading_style)}
+                          </span>
+                        </div>
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
+                          style={{
+                            background: biasColors.bg,
+                            color: biasColors.color,
+                          }}
+                        >
+                          {bias.toUpperCase()}
                         </span>
                       </div>
-                      <span
-                        className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                        style={{
-                          background: biasColors.bg,
-                          color: biasColors.color,
-                        }}
-                      >
-                        {bias.toUpperCase()}
-                      </span>
-                    </div>
 
-                    {/* Summary */}
-                    <p className={`text-[10px] mb-2 leading-tight ${isDarkMode ? 'text-slate-300' : 'text-stone-700'}`}>
-                      {executiveSummary}
-                    </p>
+                      {/* Summary */}
+                      <p className={`text-[10px] mb-2 leading-tight line-clamp-2 ${isDarkMode ? 'text-slate-300' : 'text-stone-700'}`}>
+                        {executiveSummary}
+                      </p>
 
-                    {/* Metrics */}
-                    <div className="grid grid-cols-2 gap-1.5 mb-2">
-                      <div>
-                        <div className={`text-[8px] ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>Conviction</div>
-                        <div className={`text-[10px] font-semibold ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>
-                          {convictionGrade}
+                      {/* Metrics */}
+                      <div className="grid grid-cols-2 gap-1.5 mb-2">
+                        <div>
+                          <div className={`text-[8px] ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>Conviction</div>
+                          <div className={`text-[10px] font-semibold ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>
+                            {convictionGrade}
+                          </div>
+                        </div>
+                        <div>
+                          <div className={`text-[8px] ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>Price</div>
+                          <div className={`text-[10px] font-semibold ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>
+                            {item.current_price.toFixed(2)}
+                          </div>
                         </div>
                       </div>
-                      <div>
-                        <div className={`text-[8px] ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>Price</div>
-                        <div className={`text-[10px] font-semibold ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>
-                          {item.current_price.toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Footer */}
-                    <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }}>
-                      <div className="flex items-center gap-1.5 text-[8px]" style={{ color: isDarkMode ? '#6b7280' : '#9ca3af' }}>
-                        <Clock className="w-3 h-3" />
-                        {formatDate(item.created_at)}
+                      {/* Footer */}
+                      <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }}>
+                        <div className="flex items-center gap-1.5 text-[8px]" style={{ color: isDarkMode ? '#6b7280' : '#9ca3af' }}>
+                          <Clock className="w-3 h-3 flex-shrink-0" />
+                          <span>{formatDate(item.created_at)}</span>
+                        </div>
+                        <button
+                          className="text-[10px] font-medium flex-shrink-0"
+                          style={{ color: greenAccent.primary }}
+                          onClick={(e) => {
+                            // #region agent log
+                            fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'InsightHistoryPage.tsx:248',message:'Button clicked - View Full Analysis',data:{hasAnalysis:!!analysis,analysisKeys:analysis?Object.keys(analysis):[],hasTradeSetup:!!analysis?.tradeSetup,hasExecutiveSummary:!!analysis?.executiveSummary},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                            // #endregion
+                            e.stopPropagation();
+                            // #region agent log
+                            fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'InsightHistoryPage.tsx:252',message:'Calling onSelectAnalysis',data:{hasAnalysis:!!analysis,onSelectAnalysisType:typeof onSelectAnalysis},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                            // #endregion
+                            onSelectAnalysis(analysis);
+                          }}
+                        >
+                          View analysis →
+                        </button>
                       </div>
-                      <button
-                        className="text-[10px] font-medium"
-                        style={{ color: greenAccent.primary }}
-                        onClick={(e) => {
-                          // #region agent log
-                          fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'InsightHistoryPage.tsx:248',message:'Button clicked - View Full Analysis',data:{hasAnalysis:!!analysis,analysisKeys:analysis?Object.keys(analysis):[],hasTradeSetup:!!analysis?.tradeSetup,hasExecutiveSummary:!!analysis?.executiveSummary},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                          // #endregion
-                          e.stopPropagation();
-                          // #region agent log
-                          fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'InsightHistoryPage.tsx:252',message:'Calling onSelectAnalysis',data:{hasAnalysis:!!analysis,onSelectAnalysisType:typeof onSelectAnalysis},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                          // #endregion
-                          onSelectAnalysis(analysis);
-                        }}
-                      >
-                        View Full Analysis →
-                      </button>
                     </div>
                   </div>
                 );

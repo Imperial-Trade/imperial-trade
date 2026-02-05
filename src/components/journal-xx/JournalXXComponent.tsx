@@ -2474,8 +2474,6 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
       <div 
         className={`journal-xx-safe-area w-full h-full ${isDarkMode ? 'text-slate-200' : 'text-stone-800'} font-sans flex flex-col relative overflow-hidden`}
       >
-        {/* Modal root - MECCA/INSIGHT modals render here to show inside History page with brain pulsing behind */}
-        <div id="journal-xx-modal-root" className="fixed inset-0 z-[9998] pointer-events-none [&>*]:pointer-events-auto" aria-hidden="true" />
         {/* Header - MeccaHeader when MECCA tab; otherwise Journal/Calcu/Games header */}
         {activeTab === 'MECCA' ? (
           <div className="shrink-0 z-50 w-full">

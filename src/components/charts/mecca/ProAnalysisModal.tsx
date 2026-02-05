@@ -1,7 +1,7 @@
 // Pro-Grade Analysis Modal for MECCA XX
 // Sliding modal with conviction gauge and institutional-level insights
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { 
   X, TrendingUp, TrendingDown, Target, AlertTriangle, 
   Brain, Zap, Shield, BookOpen, ArrowUpRight, ArrowDownRight,
@@ -300,100 +300,11 @@ const ProAnalysisModal: React.FC<ProAnalysisModalProps> = ({
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
-  // Initialize as false (visible) when isOpen is true and analysis exists, otherwise true (hidden)
-  const [modalAnimating, setModalAnimating] = useState(!(isOpen && analysis));
-  const [dragY, setDragY] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStartY = useRef(0);
-  
-  // #region agent log
-  React.useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProAnalysisModal.tsx:304',message:'Component rendered',data:{isOpen,hasAnalysis:!!analysis,modalAnimating,isLoading},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-  }, []);
-  // #endregion
-  
-  // Trigger slide animation only after loading completes
-  useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProAnalysisModal.tsx:310',message:'useEffect triggered',data:{isOpen,isLoading,hasAnalysis:!!analysis,currentModalAnimating:modalAnimating},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-    // #endregion
-    console.log('[ProAnalysisModal] useEffect triggered - isOpen:', isOpen, 'isLoading:', isLoading, 'hasAnalysis:', !!analysis, 'current modalAnimating:', modalAnimating);
-    if (isOpen && analysis) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProAnalysisModal.tsx:313',message:'Setting modalAnimating to false',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-      // #endregion
-      // If we have analysis data, show immediately regardless of isLoading
-      // (isLoading might be true due to other state, but we have the saved analysis)
-      console.log('[ProAnalysisModal] Analysis available, showing modal immediately - setting modalAnimating to false');
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
-        setModalAnimating(false);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProAnalysisModal.tsx:318',message:'modalAnimating set to false',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-        // #endregion
-        console.log('[ProAnalysisModal] modalAnimating set to false via requestAnimationFrame');
-      });
-    } else if (isOpen && isLoading && !analysis) {
-      // Keep hidden during loading when no analysis yet
-      console.log('[ProAnalysisModal] Modal is loading and no analysis, keeping hidden');
-      setModalAnimating(true);
-    } else if (isOpen && !isLoading && !analysis) {
-      // No analysis and not loading - show anyway (might be error state)
-      console.warn('[ProAnalysisModal] Modal is open but no analysis provided, showing anyway');
-      requestAnimationFrame(() => {
-        setModalAnimating(false);
-      });
-    } else if (!isOpen) {
-      // Modal is closed
-      setModalAnimating(true);
-    }
-  }, [isOpen, isLoading, analysis]);
-  
-  // Close modal with animation
-  const handleClose = () => {
-    setModalAnimating(true);
-    setTimeout(() => {
-      onClose();
-      setModalAnimating(false);
-      setDragY(0);
-    }, 400);
-  };
-  
-  // Handle drag start
-  const handleDragStart = (e: React.TouchEvent | React.MouseEvent) => {
-    setIsDragging(true);
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    dragStartY.current = clientY;
-  };
-  
-  // Handle drag move
-  const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!isDragging) return;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const deltaY = clientY - dragStartY.current;
-    if (deltaY > 0) {
-      setDragY(deltaY);
-    }
-  };
-  
-  // Handle drag end
-  const handleDragEnd = () => {
-    if (isDragging) {
-      if (dragY > 100) {
-        // Swipe down to close
-        handleClose();
-      } else {
-        // Snap back
-        setDragY(0);
-      }
-      setIsDragging(false);
-    }
-  };
   
   // Close on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
+      if (e.key === 'Escape') onClose();
     };
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
@@ -403,119 +314,77 @@ const ProAnalysisModal: React.FC<ProAnalysisModalProps> = ({
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = 'auto';
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
   
-  // Log when modal should render
-  useEffect(() => {
-    if (isOpen) {
-      console.log('[ProAnalysisModal] Modal isOpen=true, rendering modal', {
-        hasAnalysis: !!analysis,
-        isLoading,
-        modalAnimating,
-        analysisKeys: analysis ? Object.keys(analysis) : [],
-      });
-    }
-  }, [isOpen, analysis, isLoading, modalAnimating]);
-  
-  // Force modal to show when opened from history (even if parent is hidden)
-  useEffect(() => {
-    if (isOpen && analysis && modalAnimating) {
-      console.log('[ProAnalysisModal] Force showing modal - analysis available but modalAnimating is true');
-      // Small delay to ensure portal is rendered
-      const timer = setTimeout(() => {
-        setModalAnimating(false);
-        console.log('[ProAnalysisModal] Forced modalAnimating to false');
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, analysis, modalAnimating]);
-  
-  if (!isOpen) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProAnalysisModal.tsx:418',message:'Modal not open - returning null',data:{isOpen},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-    // #endregion
-    return null;
-  }
-  
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProAnalysisModal.tsx:420',message:'Rendering modal JSX',data:{isOpen,hasAnalysis:!!analysis,modalAnimating,transform:modalAnimating?'translateY(100%)':'translateY(0)'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-  // #endregion
-  console.log('[ProAnalysisModal] Rendering modal component - isOpen:', isOpen, 'hasAnalysis:', !!analysis);
+  if (!isOpen) return null;
   
   return (
     <>
-      {/* Backdrop - Same as Calcu XX */}
+      {/* Backdrop */}
       <div 
-        className={`fixed inset-0 bg-black/30 transition-opacity duration-300 ${modalAnimating ? 'opacity-0' : 'opacity-100'}`}
-        style={{ zIndex: 99998 }}
-        onClick={handleClose}
+        className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
       />
       
-      {/* Modal - Slides from bottom, positioned below header (same as Calcu XX) */}
+      {/* Modal - Full screen on mobile, centered on desktop */}
       <div 
         ref={modalRef}
-        className={`fixed inset-x-0 bottom-0 overflow-hidden flex flex-col rounded-t-3xl border-t shadow-2xl ${
-          isDragging ? '' : 'transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]'
+        className={`fixed z-[101] overflow-hidden transition-transform duration-300 flex flex-col ${
+          isMobile 
+            ? 'inset-0 rounded-none' 
+            : 'bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[1006px] max-h-[85vh] rounded-t-2xl'
         }`}
         style={{
-          zIndex: 99999, // Highest z-index to be on top of everything
-          top: isMobile ? '72px' : '80px',
-          height: isMobile 
-            ? `calc(100% - 72px - env(safe-area-inset-bottom, 0px))`
-            : `calc(100% - 80px)`,
-          maxHeight: isMobile 
-            ? `calc(100% - 72px - env(safe-area-inset-bottom, 0px))`
-            : `calc(100% - 80px)`,
-          // Glassmorphism effect (same as navigation bar)
-          background: 'rgba(15, 15, 20, 0.3)',
-          backdropFilter: 'blur(30px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-          borderColor: 'rgba(255, 255, 255, 0.2)',
-          boxShadow: '0 8px 24px 0 rgba(0, 0, 0, 0.3)',
-          // Transform: prioritize dragY, then modalAnimating state
-          transform: dragY > 0 
-            ? `translateY(${dragY}px)` 
-            : (modalAnimating ? 'translateY(100%)' : 'translateY(0)'),
+          background: 'linear-gradient(135deg, rgba(10, 10, 18, 0.99) 0%, rgba(15, 15, 25, 0.99) 100%)',
+          border: isMobile ? 'none' : `1px solid ${greenAccent.primary}30`,
+          borderBottom: 'none',
+          boxShadow: isMobile ? 'none' : `0 -10px 40px rgba(0, 0, 0, 0.5), 0 0 60px ${greenAccent.primary}20`,
+          transform: isOpen 
+            ? (isMobile ? 'translateY(0)' : 'translate(-50%, 0)') 
+            : (isMobile ? 'translateY(100%)' : 'translate(-50%, 100%)'),
         }}
       >
-        {/* Drag Handle - Swipe down to close (same as Calcu XX) */}
-        <div 
-          className="flex justify-center pt-4 pb-2 cursor-grab active:cursor-grabbing touch-none shrink-0"
-          onTouchStart={handleDragStart}
-          onTouchMove={handleDragMove}
-          onTouchEnd={handleDragEnd}
-          onMouseDown={handleDragStart}
-          onMouseMove={handleDragMove}
-          onMouseUp={handleDragEnd}
-          onMouseLeave={handleDragEnd}
-        >
-          <div className={`w-12 h-1.5 rounded-full transition-colors ${isDragging ? 'bg-slate-400' : 'bg-slate-600'}`} />
+        {/* Drag Handle - Only on non-mobile */}
+        {!isMobile && (
+          <div className="flex justify-center py-2">
+            <div className="w-12 h-1 rounded-full" style={{ background: neonColors.borderDefault }} />
           </div>
+        )}
         
-        {/* Header - Single line layout with clear background */}
+        {/* Header - Fixed on mobile */}
         <div 
-          className="flex items-center justify-between px-4 md:px-6 py-3 shrink-0"
+          className={`flex items-center justify-between px-4 md:px-6 py-3 shrink-0 ${isMobile ? 'pt-12' : ''}`}
           style={{ 
-            borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
-            background: 'transparent',
+            borderBottom: `1px solid ${neonColors.borderDefault}`,
+            background: isMobile ? 'rgba(10, 10, 18, 0.98)' : 'transparent',
+            paddingTop: isMobile ? 'max(12px, env(safe-area-inset-top))' : undefined,
           }}
         >
-          <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+          <div className="flex items-center gap-3">
             <div 
-              className="p-1.5 md:p-2 rounded-xl flex-shrink-0"
+              className="p-2 md:p-2.5 rounded-xl"
               style={{ background: `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)` }}
             >
-              <Brain className="w-4 h-4 md:w-5 md:h-5 text-black" />
+              <Brain className="w-5 h-5 md:w-6 md:h-6 text-black" />
             </div>
-            <h2 className="text-base md:text-lg font-bold flex-shrink-0" style={{ color: neonColors.textPrimary }}>
+            <div>
+              <h2 className="text-base md:text-lg font-bold" style={{ color: neonColors.textPrimary }}>
                 Pro Analysis
               </h2>
               {analysis && (
-              <p className="text-[10px] md:text-xs ml-auto flex-shrink-0" style={{ color: neonColors.textDim }}>
+                <p className="text-[10px] md:text-xs" style={{ color: neonColors.textDim }}>
                   {displaySymbol ?? analysis.symbol} • {analysis.timeframe} • {new Date(analysis.analyzedAt).toLocaleTimeString()}
                 </p>
               )}
             </div>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-3 rounded-xl hover:bg-white/5 transition-colors min-h-[48px] min-w-[48px] flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.05)' }}
+          >
+            <X className="w-5 h-5 md:w-6 md:h-6" style={{ color: neonColors.textMuted }} />
+          </button>
         </div>
         
         {/* Content - Scrollable; flex-1 min-h-0 so it shrinks and scrolls inside the modal */}

@@ -185,11 +185,7 @@ export default function AdvancedTools() {
         </motion.div>
 
         {/* Tool Display - Mobile Optimized */}
-        <div className="min-h-[500px] sm:min-h-[600px] pt-1 relative">
-          {/* Modal root for MECCA - View analysis modal renders here to show on the History page */}
-          {activeTool?.name === "MECCA" && (
-            <div id="mecca-modal-root" className="fixed inset-0 z-[9998] pointer-events-none [&>*]:pointer-events-auto" aria-hidden="true" />
-          )}
+        <div className="min-h-[500px] sm:min-h-[600px] pt-1">
           <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-lg border-0 h-full overflow-y-auto">
             <div className="p-0 bg-transparent">
               {activeTool?.name === "Educational Journal" && <TradeJournalProvider>

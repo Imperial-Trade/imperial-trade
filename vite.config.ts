@@ -18,11 +18,10 @@ export default defineConfig(({ mode }) => ({
     allowedHosts: true, // Allow tunnel hosts (e.g. *.lhr.life) so mobile can load via dev:mobile
     // Add history API fallback for SPA routing
     historyApiFallback: true,
-    // Enable HMR (Hot Module Replacement) - port follows dev server (e.g. --port 8083)
+    // Enable HMR - port follows dev server for immediate live preview on any port
     hmr: {
       host: 'localhost',
       protocol: 'ws',
-      // port/clientPort omitted so Vite uses the actual server port for immediate live preview
     },
     // Watch for file changes and auto-reload
     watch: {

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { NotebookPen, BarChart3, Calculator, Sparkles, LucideIcon, TrendingUp, ChevronDown, Key } from 'lucide-react';
+import { NotebookPen, BarChart3, Calculator, Sparkles, LucideIcon, TrendingUp, ChevronDown, Key, History } from 'lucide-react';
 import { premiumGradients } from './neonTheme';
 
 // Premium color configuration matching JournalXX
@@ -34,6 +34,8 @@ interface MeccaHeaderProps {
   showMobileTabs?: boolean;
   onApiKeySetup?: () => void;
   isApiKeySet?: boolean;
+  /** Opens the Deconstructor history page with all deconstructed images */
+  onHistoryClick?: () => void;
 }
 
 const MeccaHeader: React.FC<MeccaHeaderProps> = ({ 
@@ -44,6 +46,7 @@ const MeccaHeader: React.FC<MeccaHeaderProps> = ({
   showMobileTabs = false,
   onApiKeySetup,
   isApiKeySet = false,
+  onHistoryClick,
 }) => {
   const [hoveredTab, setHoveredTab] = useState<string | null>(null);
   const [mobileTabOpen, setMobileTabOpen] = useState(false);
@@ -176,6 +179,25 @@ const MeccaHeader: React.FC<MeccaHeaderProps> = ({
 
       {/* Mobile: slot for session only (portaled from MeccaXXDashboard); logo and session leveled in this row */}
       <div id="mecca-mobile-asset-slot" className="flex-1 flex items-center justify-end min-w-0 lg:hidden" />
+      
+      {/* History icon - opens Deconstructor history with all deconstructed images */}
+      {onHistoryClick && (
+        <div className="flex items-center mr-1">
+          <button
+            onClick={onHistoryClick}
+            className="p-2 rounded-lg transition-all hover:opacity-80 cursor-pointer hover:bg-white/5 touch-manipulation"
+            style={{
+              color: premiumColors.emerald,
+              minWidth: '44px',
+              minHeight: '44px',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+            title="View Deconstruction History"
+          >
+            <History className="w-5 h-5" />
+          </button>
+        </div>
+      )}
       
       {/* Key icon button for API key setup */}
       {onApiKeySetup && (

@@ -11,6 +11,14 @@ import { DeconstructorPhaseLoader } from './DeconstructorPhaseLoader';
 import DeconstructorHistoryPage from './DeconstructorHistoryPage';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 
+const fileToBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (e) => reject(e);
+  });
+
 // Context for sharing DeconstructorPanel state
 interface DeconstructorContextType {
   fileInputRef: React.RefObject<HTMLInputElement>;
@@ -107,6 +115,8 @@ interface AnalysisResult {
 
 interface DeconstructorPanelProps {
   isDarkMode?: boolean;
+  /** Ref to expose openHistory() for header History icon - deconstructed images go to history page */
+  historyOpenerRef?: React.MutableRefObject<{ openHistory: () => void } | null>;
 }
 
 // Rating configuration
@@ -122,7 +132,7 @@ const ratingConfig: Record<Rating, { color: string; bg: string; glow: string; bo
   'F': { color: '#dc2626', bg: 'rgba(220, 38, 38, 0.2)', glow: 'rgba(220, 38, 38, 0.5)', border: 'rgba(220, 38, 38, 0.4)' },
 };
 
-export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?: (context: DeconstructorContextType) => React.ReactNode }> = ({ isDarkMode = true, children }) => {
+export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?: (context: DeconstructorContextType) => React.ReactNode }> = ({ isDarkMode = true, children, historyOpenerRef }) => {
   // #region agent log
   useEffect(() => {
     fetch('http://127.0.0.1:7242/ingest/2b258959-f12c-4dd6-b52b-301ce15c2cb0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DeconstructorPanel.tsx:125',message:'Component MOUNTED',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'K'})}).catch(()=>{});
@@ -203,6 +213,14 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [showHistoryPage, setShowHistoryPage] = useState(false);
+  
+  // Expose openHistory for MeccaHeader History icon
+  useEffect(() => {
+    if (historyOpenerRef) {
+      historyOpenerRef.current = { openHistory: () => setShowHistoryPage(true) };
+      return () => { historyOpenerRef.current = null; };
+    }
+  }, [historyOpenerRef]);
   
   const dragStartY = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -426,12 +444,28 @@ export const DeconstructorPanel: React.FC<DeconstructorPanelProps & { children?:
           });
         }
       } catch (error: any) {
-        console.error('Upload error:', error);
-        toast({
-          title: "Upload Failed",
-          description: `Failed to upload ${file.name}`,
-          variant: "destructive"
-        });
+        console.warn('Storage upload failed, using local preview:', error?.message || error);
+        try {
+          const dataUrl = await fileToBase64(file);
+          newPhotos.push({
+            id: `upload-${Date.now()}-${Math.random()}`,
+            url: dataUrl,
+            isAnalyzed: false,
+            source: 'upload',
+          });
+          toast({
+            title: "Using local preview",
+            description: `${file.name} couldn't be saved to cloud — you can still analyze it`,
+            variant: "default"
+          });
+        } catch (fallbackErr) {
+          console.error('Fallback failed:', fallbackErr);
+          toast({
+            title: "Upload Failed",
+            description: `Could not add ${file.name}`,
+            variant: "destructive"
+          });
+        }
       }
     }
 

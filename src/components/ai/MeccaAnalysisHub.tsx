@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import './MeccaResponsive.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, Brain, Zap, TrendingUp, Target, Shield, ChevronRight, Scan, Activity, Menu, X, Clock, AlertCircle } from 'lucide-react';
@@ -51,11 +52,27 @@ const MeccaAnalysisHub: React.FC = () => {
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [insightStream, setInsightStream] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('strengths');
+  const [meccaPageTab, setMeccaPageTab] = useState<'deconstructor' | 'history'>('deconstructor');
   const [scanlinePosition, setScanlinePosition] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<AgentOutput | null>(null);
   const [fullscreenImageIndex, setFullscreenImageIndex] = useState<number | null>(null);
+  const [resultsCarouselIndex, setResultsCarouselIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFullscreenImageIndex(null);
+    };
+    if (fullscreenImageIndex !== null) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
+  }, [fullscreenImageIndex]);
   const {
     toast
   } = useToast();
@@ -225,6 +242,7 @@ const MeccaAnalysisHub: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       addInsight("🎯 Analysis complete! Generating insights...");
       setAnalysisResult(parsedResult);
+      setResultsCarouselIndex(0);
       setShowResultsModal(true);
       toast({
         title: "🎉 Analysis Complete!",
@@ -327,27 +345,106 @@ const MeccaAnalysisHub: React.FC = () => {
       duration: 0.6
     }}>
         <div className="container mx-auto px-4 sm:px-6 py-1">
-          <div className="flex items-center justify-between my-2">
+          <div className="flex items-center justify-between my-2 flex-wrap gap-2">
             <div className="flex items-center gap-3 sm:gap-4">
               <div className="mecca-neural-brain">
                 <NeuralBrain />
               </div>
               <div>
                 <h1 className="text-lg sm:text-2xl font-bold mecca-gradient-text">
-                  MECCA Analysis Hub
+                  MECCA XX
                 </h1>
                 <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
                   AI-Powered Trading Performance Analysis
                 </p>
               </div>
             </div>
-            
+            {/* Deconstructor | History tabs - modal shows on the active tab */}
+            <div className="flex rounded-lg border border-violet-200/30 bg-violet-500/5 p-0.5">
+              <button
+                type="button"
+                onClick={() => setMeccaPageTab('deconstructor')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  meccaPageTab === 'deconstructor'
+                    ? 'bg-violet-500 text-white shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-violet-500/10'
+                }`}
+              >
+                Deconstructor
+              </button>
+              <button
+                type="button"
+                onClick={() => setMeccaPageTab('history')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  meccaPageTab === 'history'
+                    ? 'bg-violet-500 text-white shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-violet-500/10'
+                }`}
+              >
+                History
+              </button>
+            </div>
           </div>
         </div>
       </motion.div>
 
-      {/* Main Content - Responsive Layout */}
+      {/* Main Content - Deconstructor (upload/analyze) or History (analysis list) */}
       <div className="container mx-auto px-4 sm:px-6 py-1 sm:py-2">
+        {meccaPageTab === 'history' ? (
+          /* History Page - full-width analysis list; modal shows on this page when View analysis clicked */
+          <div className="min-h-[60vh]">
+            <Card className="mecca-panel mecca-glass p-4 sm:p-6">
+              <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-violet-500" />
+                Analysis History
+              </h3>
+              {analysisHistory.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Activity className="w-12 h-12 text-muted-foreground/50 mb-3" />
+                  <p className="text-muted-foreground">No analysis history yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">Run an analysis in Deconstructor to see results here</p>
+                  <Button variant="outline" className="mt-4" onClick={() => setMeccaPageTab('deconstructor')}>
+                    Go to Deconstructor
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[70vh] overflow-y-auto">
+                  {analysisHistory.map((analysis, index) => {
+                    const analysisData = typeof analysis.output_text === 'string' ? (() => { try { return JSON.parse(analysis.output_text); } catch { return {}; } })() : analysis.output_text;
+                    return (
+                      <motion.div
+                        key={analysis.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="p-4 rounded-xl bg-muted/30 border border-muted-foreground/10 cursor-pointer hover:bg-violet-50/50 hover:border-violet-200/50 transition-all mecca-touch-button group"
+                        onClick={() => { setMeccaPageTab('history'); requestAnimationFrame(() => setSelectedHistoryItem(analysis)); }}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <Badge variant="secondary" className="text-xs">
+                                {analysisData?.screenshot_analysis?.images_processed || 'N/A'} images
+                              </Badge>
+                              <span className="text-xs font-medium text-violet-600">
+                                {new Date(analysis.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {analysisData?.trader_behavior?.experience_level || 'Analysis'} • {analysisData?.risk_assessment?.risk_score ?? 'N/A'}/10 risk
+                            </p>
+                            <p className="text-emerald-600 text-sm font-medium mt-1 group-hover:underline">View analysis →</p>
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-violet-500 transition-colors flex-shrink-0" />
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          </div>
+        ) : (
         <div className="mecca-main-grid">
           
           {/* Left Panel - Evidence Viewer */}
@@ -422,7 +519,7 @@ const MeccaAnalysisHub: React.FC = () => {
                   <span className="sm:hidden">Gallery</span>
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  {uploadedFiles.map((file, index) => <motion.div key={index} className="relative rounded-lg overflow-hidden border border-violet-200/30 group hover:border-violet-400/50 transition-colors aspect-video" initial={{
+                  {uploadedFiles.map((file, index) => <motion.div key={index} className="relative rounded-xl overflow-hidden border border-violet-200/30 group hover:border-violet-400/50 transition-colors aspect-video cursor-pointer" initial={{
                 opacity: 0,
                 scale: 0.8
               }} animate={{
@@ -430,8 +527,8 @@ const MeccaAnalysisHub: React.FC = () => {
                 scale: 1
               }} transition={{
                 delay: index * 0.1
-              }}>
-                      <img src={file.preview} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
+              }} onClick={() => setFullscreenImageIndex(index)}>
+                      <img src={file.preview} alt={`Upload ${index + 1}`} className="w-full h-full object-cover rounded-xl" />
                       
                       {/* Upload Progress Overlay */}
                       {file.status === 'uploading' && <motion.div className="absolute inset-0 bg-violet-500/20 flex items-center justify-center backdrop-blur-sm" initial={{
@@ -740,7 +837,7 @@ const MeccaAnalysisHub: React.FC = () => {
                   y: 0
                 }} transition={{
                   delay: index * 0.1
-                }} onClick={() => setSelectedHistoryItem(analysis)}>
+                }} onClick={() => { setMeccaPageTab('history'); requestAnimationFrame(() => setSelectedHistoryItem(analysis)); }}>
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
@@ -780,8 +877,12 @@ const MeccaAnalysisHub: React.FC = () => {
               </Card>}
           </motion.div>
         </div>
+        )}
       </div>
 
+      {/* Modals - portaled to mecca-modal-root when on MECCA so they show on the active page (History or Deconstructor) */}
+      {createPortal(
+        <>
       {/* Premium Analysis Results Modal */}
       <AnimatePresence>
         {showResultsModal && analysisResult && <motion.div initial={{
@@ -841,6 +942,39 @@ const MeccaAnalysisHub: React.FC = () => {
               {/* Scrollable Content Area */}
               <div className="max-h-[calc(90vh-120px)] overflow-y-auto p-6">
                 
+                {/* Screenshot Carousel - Click to view fullscreen */}
+                {uploadedFiles.length > 0 && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="mb-8">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Brain className="w-4 h-4 text-violet-500" />
+                      <h3 className="text-sm font-semibold text-gray-800">Analysis Evidence</h3>
+                      <Badge variant="secondary" className="text-xs">{uploadedFiles.length} screenshot{uploadedFiles.length !== 1 ? 's' : ''} analyzed</Badge>
+                    </div>
+                    <div className="relative flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setResultsCarouselIndex(i => Math.max(0, i - 1)); }}
+                        className="absolute left-0 z-10 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors -translate-x-1"
+                      >
+                        <ChevronRight className="w-5 h-5 rotate-180" />
+                      </button>
+                      <div
+                        className="flex-1 flex justify-center cursor-pointer rounded-2xl overflow-hidden border-2 border-violet-200/50 hover:border-violet-400/70 transition-colors bg-black/5 max-w-[280px] mx-auto"
+                        onClick={() => { setFullscreenImageIndex(resultsCarouselIndex); setShowResultsModal(false); }}
+                      >
+                        <img src={uploadedFiles[resultsCarouselIndex].preview} alt={`Screenshot ${resultsCarouselIndex + 1}`} className="w-full h-auto object-contain rounded-2xl" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setResultsCarouselIndex(i => Math.min(uploadedFiles.length - 1, i + 1)); }}
+                        className="absolute right-0 z-10 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors translate-x-1"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <p className="text-center text-xs text-gray-500 mt-2">{resultsCarouselIndex + 1}/{uploadedFiles.length} • Click to view fullscreen</p>
+                  </motion.div>
+                )}
 
                 {/* Overall Analysis */}
                 <motion.div initial={{
@@ -1154,6 +1288,75 @@ const MeccaAnalysisHub: React.FC = () => {
             </motion.div>
           </motion.div>}
       </AnimatePresence>
+
+      {/* Fullscreen Image Viewer - Never touches edges, round photo corners */}
+      <AnimatePresence>
+        {fullscreenImageIndex !== null && uploadedFiles[fullscreenImageIndex] && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-8 sm:p-12 md:p-16 lg:p-20 bg-black/80 backdrop-blur-sm"
+            onClick={() => setFullscreenImageIndex(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.3 }}
+              className="relative w-full h-full flex items-center justify-center"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Image - clear gap from top, bottom, left, right; round corners (not rectangle) */}
+              <div 
+                className="max-w-[calc(100vw-5rem)] sm:max-w-[calc(100vw-7rem)] md:max-w-[calc(100vw-9rem)] max-h-[calc(100vh-5rem)] sm:max-h-[calc(100vh-7rem)] md:max-h-[calc(100vh-9rem)] overflow-hidden rounded-[3rem] shadow-2xl m-2"
+              >
+                <img
+                  src={uploadedFiles[fullscreenImageIndex].preview}
+                  alt={`Screenshot ${fullscreenImageIndex + 1}`}
+                  className="w-full h-full max-w-full max-h-full object-contain block"
+                />
+              </div>
+              {/* Close button */}
+              <button
+                onClick={() => setFullscreenImageIndex(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              {/* Navigation arrows */}
+              {uploadedFiles.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setFullscreenImageIndex(i => (i === null ? 0 : Math.max(0, i - 1)))}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                    aria-label="Previous"
+                  >
+                    <ChevronRight className="w-6 h-6 rotate-180" />
+                  </button>
+                  <button
+                    onClick={() => setFullscreenImageIndex(i => (i === null ? 0 : Math.min(uploadedFiles.length - 1, i + 1)))}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                    aria-label="Next"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
+                </>
+              )}
+              {/* Page indicator */}
+              {uploadedFiles.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/50 text-white text-sm">
+                  {fullscreenImageIndex + 1} / {uploadedFiles.length}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+        </>,
+        (typeof document !== 'undefined' && document.getElementById('mecca-modal-root')) || document.body
+      )}
     </div>;
 };
 export default MeccaAnalysisHub;

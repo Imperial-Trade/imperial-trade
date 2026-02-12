@@ -1106,7 +1106,7 @@ const InsightHistoryPage: React.FC<InsightHistoryPageProps> = ({
                 WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
                 position: 'relative',
                 scrollbarWidth: 'thin',
-                scrollbarColor: isDarkMode ? 'rgba(255,255,255,0.2) transparent',
+                scrollbarColor: isDarkMode ? 'rgba(255,255,255,0.2) transparent' : 'rgba(0,0,0,0.2) transparent',
               }}
             >
               {filteredAnalyses.map((item, index) => {

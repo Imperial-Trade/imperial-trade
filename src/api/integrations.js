@@ -115,32 +115,41 @@ export const InvokeLLM = async ({ prompt, file_urls = [], user_id = null }) => {
   }
 };
 
+// Retry helper for Edge Function calls - handles intermittent "Failed to send request" errors
+const invokeWithRetry = async (fnName, body, maxRetries = 3) => {
+  let lastError;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const { data, error } = await supabase.functions.invoke(fnName, { body });
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      lastError = e;
+      const isRetryable = e?.message?.includes('Failed to send') || e?.message?.includes('fetch');
+      if (attempt < maxRetries - 1 && isRetryable) {
+        const delay = 800 * (attempt + 1);
+        console.warn(`Edge Function ${fnName} attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+      } else {
+        throw lastError;
+      }
+    }
+  }
+  throw lastError;
+};
+
 export const AnalyzeSetup = async ({ user_id, file_urls = [], api_key = null }) => {
   try {
     console.log('Invoking deconstructor agent for educational setup analysis');
     console.log('File URLs to analyze:', file_urls.length);
     console.log('API key provided:', api_key ? 'Yes (user key)' : 'No (will use env var)');
     
-    // Call Supabase Edge Function for deconstructor analysis
-    // Note: file_urls should already be uploaded URLs from the frontend
-    const { data, error } = await supabase.functions.invoke('deconstructor-agent', {
-      body: {
-        user_id,
-        file_urls, // These should be already uploaded URLs
-        api_key // Pass user's API key if available
-      }
+    const data = await invokeWithRetry('deconstructor-agent', {
+      user_id,
+      file_urls,
+      api_key
     });
     
-    if (error) {
-      console.error('Deconstructor agent analysis error:', error);
-      // Check if error indicates API key issue
-      if (error.message?.includes('API key') || error.message?.includes('requires_api_key')) {
-        throw new Error('API key not configured. Please set your Gemini API key in Insight XX settings.');
-      }
-      throw error;
-    }
-    
-    // Check if response indicates API key is needed
     if (data?.error && data.error.includes('API key')) {
       throw new Error('API key not configured. Please set your Gemini API key in Insight XX settings.');
     }

@@ -9,6 +9,10 @@ lerna-debug.log*
 
 node_modules
 dist
+# Use bun.lockb only - Digital Ocean fails with multiple lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 dist-ssr
 *.local
 

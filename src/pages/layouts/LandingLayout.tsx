@@ -8,9 +8,9 @@ const LandingLayout = () => {
   const isAccountRequestPage = location.pathname === '/account-request';
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="h-screen min-h-screen bg-background overflow-x-hidden flex flex-col">
       <AppBar />
-      <main className={isAccountRequestPage ? '' : 'pt-20'}>
+      <main className={`flex-1 min-h-0 overflow-y-auto ${isAccountRequestPage ? '' : 'pt-20'}`}>
         <Outlet />
       </main>
     </div>

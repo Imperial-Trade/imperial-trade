@@ -65,7 +65,7 @@ export default function Layout({
 
   // For dashboard pages, use sidebar layout
   return <SidebarProvider defaultOpen={false}>
-      <div className={`min-h-screen w-full ${isJournalXXPage ? '' : 'bg-background'}`}>
+      <div className={`h-screen min-h-screen w-full flex flex-col ${isJournalXXPage ? '' : 'bg-background'}`}>
         {/* Authenticated Apple-style Navigation Bar - Desktop Only (Hidden on Journal XX) */}
         {!isJournalXXPage && (
           <ErrorBoundary componentName="Authenticated Navigation">
@@ -87,8 +87,8 @@ export default function Layout({
           </ErrorBoundary>
         )}
 
-        {/* Main content - centered, no left margin */}
-        <main className={`w-full min-h-screen ${isJournalXXPage ? '' : 'bg-background border-l border-border/10'} ${isJournalXXPage ? 'pt-0' : 'pt-0 lg:pt-20'}`}>
+        {/* Main content - scrollable when content is long (e.g. Admin Tools) */}
+        <main className={`w-full min-h-screen flex-1 min-h-0 overflow-y-auto ${isJournalXXPage ? '' : 'bg-background border-l border-border/10'} ${isJournalXXPage ? 'pt-0' : 'pt-0 lg:pt-20'}`}>
           <ErrorBoundary componentName="Page Content">
             <Outlet />
           </ErrorBoundary>

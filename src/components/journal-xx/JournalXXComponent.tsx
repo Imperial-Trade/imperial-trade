@@ -3919,6 +3919,22 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                  {/* MECCA TAB - Mobile: Deconstructor only - CONSISTENT STRUCTURE ACROSS ALL DEVICES */}
                  {activeTab === 'MECCA' && (
+                     <>
+                     {/* Hidden ref host so Key button opens API key modal on MECCA tab (modal portals to body) */}
+                     <div
+                       aria-hidden="true"
+                       style={{
+                         position: 'absolute',
+                         width: 1,
+                         height: 1,
+                         opacity: 0,
+                         pointerEvents: 'none',
+                         overflow: 'hidden',
+                         zIndex: -1,
+                       }}
+                     >
+                       <GeminiSetupAnalyzer ref={insightAnalyzerRef} isDarkMode={isDarkMode} insightOnly={true} />
+                     </div>
                      <div className="lg:hidden relative" 
                           style={{ 
                             height: 'calc(100% - 4rem - max(5.5rem, calc(5.5rem + env(safe-area-inset-bottom, 0px))))',
@@ -3939,6 +3955,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                  )}
                          </DeconstructorPanel>
                      </div>
+                     </>
                  )}
 
                 {/* CALCU TAB - Risk Calculator */}
@@ -3952,18 +3969,15 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                  {/* INSIGHT TAB - Gemini API setup + AI analysis (mobile/tablet; separate from MECCA) */}
                  {activeTab === 'INSIGHT' && (
-                     <div className="w-full h-full overflow-hidden relative">
+                     <div className="w-full h-full min-h-0 flex flex-col overflow-hidden relative">
                          {/* Always render GeminiSetupAnalyzer so ref is available and modal can render */}
                          {/* Keep it fully rendered but visually hidden when history is shown */}
-                        <div style={{ 
+                        <div className="flex-1 min-h-0 w-full flex flex-col" style={{ 
                             position: showHistoryPage ? 'absolute' : 'relative',
-                            width: '100%',
-                            height: '100%',
+                            inset: 0,
                             pointerEvents: showHistoryPage ? 'none' : 'auto',
                             opacity: showHistoryPage ? 0 : 1,
                             zIndex: showHistoryPage ? -1 : 0,
-                            // Keep visibility: visible so React can still render portals even when hidden
-                            // The opacity: 0 and pointer-events: none will hide it visually
                             visibility: 'visible'
                         }}>
                             <GeminiSetupAnalyzer ref={insightAnalyzerRef} isDarkMode={isDarkMode} insightOnly={true} />
@@ -4317,6 +4331,22 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
 
                                  {/* MECCA - Deconstructor only */}
                                  {activeTab === 'MECCA' && (
+                                     <>
+                                     {/* Hidden ref host so Key button opens API key modal on MECCA tab (modal portals to body) */}
+                                     <div
+                                       aria-hidden="true"
+                                       style={{
+                                         position: 'absolute',
+                                         width: 1,
+                                         height: 1,
+                                         opacity: 0,
+                                         pointerEvents: 'none',
+                                         overflow: 'hidden',
+                                         zIndex: -1,
+                                       }}
+                                     >
+                                       <GeminiSetupAnalyzer ref={insightAnalyzerRef} isDarkMode={isDarkMode} insightOnly={true} />
+                                     </div>
                                      <div className="h-full w-full overflow-visible animate-in fade-in duration-300">
                                          {/* Desktop/Tablet MECCA tab - EXACT SAME STRUCTURE AS MOBILE */}
                                          <DeconstructorPanel key="mecca-deconstructor-desktop" isDarkMode={isDarkMode} historyOpenerRef={deconstructorHistoryRef}>
@@ -4330,6 +4360,7 @@ export const JournalXX: React.FC<JournalXXProps> = ({ isDarkMode, onExit, onTogg
                                            )}
                                          </DeconstructorPanel>
                                      </div>
+                                     </>
                                  )}
                                  
                                  {/* CALCU TAB - Risk Calculator */}

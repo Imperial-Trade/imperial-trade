@@ -66,7 +66,8 @@ const SignalsPage: React.FC = () => {
     label: "Market Coverage",
     subtitle: "Educational Analysis"
   }];
-  return <div className="bg-background min-h-screen font-sans">
+  return (
+    <div className="min-h-screen bg-background font-sans">
       {/* Hero Section */}
       <section className="relative py-24 px-6 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-green-500/5" />
@@ -169,8 +170,8 @@ const SignalsPage: React.FC = () => {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-8">
-            {signalFeatures.map((feature, index) => <Card key={index} className="border-border/50 transition-all duration-300 overflow-hidden">
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 transition-opacity duration-500`} />
+            {signalFeatures.map((feature, index) => <Card key={index} className="group relative rounded-lg border border-border/50 shadow-sm bg-card text-card-foreground transition-all duration-300 overflow-hidden">
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`} />
                 <div className="relative">
                   <CardHeader className="space-y-4">
                     <div className="flex items-start gap-6">
@@ -233,7 +234,7 @@ const SignalsPage: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {tradingApproach.map((approach, index) => <Card key={index} className="text-center border-border/50 transition-all duration-300">
+            {tradingApproach.map((approach, index) => <Card key={index} className="text-center rounded-lg border border-border/50 shadow-sm bg-card text-card-foreground transition-all duration-300">
                 <CardHeader className="space-y-4">
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 mx-auto">
                     <approach.icon className="h-8 w-8 text-green-600" />
@@ -305,6 +306,7 @@ const SignalsPage: React.FC = () => {
           </div>
         </div>
       </section>
-    </div>;
+    </div>
+  );
 };
 export default SignalsPage;

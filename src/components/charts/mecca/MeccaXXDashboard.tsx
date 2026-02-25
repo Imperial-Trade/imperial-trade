@@ -453,6 +453,7 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [internalMobileTab, setInternalMobileTab] = useState<'chart' | 'economic' | 'analyze'>('chart');
   const [isBrainButtonPressed, setIsBrainButtonPressed] = useState(false);
+  const [apiKeyModalAnimatedIn, setApiKeyModalAnimatedIn] = useState(false);
   
   // Use external tab if provided, otherwise use internal state
   const mobileActiveTab = externalMobileTab ?? internalMobileTab;
@@ -763,6 +764,19 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
         setIsApiKeySet(false);
         setApiKeyStatus('idle');
       }
+    }
+  }, [showApiKeyModal]);
+
+  // Slide-up animation: start off-screen then animate in when API key modal opens
+  useEffect(() => {
+    if (showApiKeyModal) {
+      setApiKeyModalAnimatedIn(false);
+      const id = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setApiKeyModalAnimatedIn(true));
+      });
+      return () => cancelAnimationFrame(id);
+    } else {
+      setApiKeyModalAnimatedIn(false);
     }
   }, [showApiKeyModal]);
 
@@ -1124,59 +1138,6 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
         </div>
       )}
       
-      {(!isApiKeySet || showApiKeySetup) && (
-        <div id="api-key-setup-form" className={`p-3 rounded-xl ${isDarkMode ? 'bg-[#1C1C1E]' : 'bg-white'} border ${isDarkMode ? 'border-white/10' : 'border-black/10'}`} style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)` }}>
-                <Key className="w-4 h-4 text-black" />
-            </div>
-            <div>
-                <h3 className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-stone-900'}`}>{showApiKeySetup && isApiKeySet ? 'Change API Key' : 'Setup Gemini API'}</h3>
-                <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>{showApiKeySetup && isApiKeySet ? 'Update your API key' : 'Required for AI analysis'}</p>
-            </div>
-          </div>
-            {showApiKeySetup && isApiKeySet && (
-              <button
-                onClick={() => {
-                  setShowApiKeySetup(false);
-                  setApiKey('');
-                  setApiKeyStatus('idle');
-                  setError(null);
-                }}
-                className="text-slate-400 hover:text-white transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-          <div className="relative mb-2">
-            <input type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={(e) => { setApiKey(e.target.value); if (apiKeyStatus !== 'idle') { setApiKeyStatus('idle'); setError(null); } }} placeholder="Paste your API key..." className={`w-full px-3 py-2 pr-10 rounded-lg text-xs ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 text-white' : 'bg-slate-100 border-slate-300 text-stone-900'} ${apiKeyStatus === 'invalid' ? 'border-red-500' : ''}`} />
-            <button onClick={() => setShowApiKey(!showApiKey)} className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>{showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}</button>
-          </div>
-          {apiKeyStatus === 'invalid' && error && <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg mb-2" style={{ background: 'rgba(239,68,68,0.1)' }}><AlertCircle className="w-3 h-3" style={{ color: neonColors.negative }} /><span className="text-[10px]" style={{ color: neonColors.negative }}>{error}</span></div>}
-          <div className="flex flex-col gap-2">
-          <button onClick={handleSetApiKey} disabled={isValidatingKey || !apiKey.trim()} className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5" style={{ background: isValidatingKey ? neonColors.bgSecondary : `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)`, color: isValidatingKey ? neonColors.textMuted : '#000', opacity: !apiKey.trim() ? 0.5 : 1 }}>
-            {isValidatingKey ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Validating...</span></> : <><CheckCircle2 className="w-3.5 h-3.5" /><span>{showApiKeySetup && isApiKeySet ? 'Update API Key' : 'Set API Key'}</span></>}
-          </button>
-            {isApiKeySet && (
-              <button 
-                onClick={handleRemoveApiKey}
-                className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border-2 transition-all"
-                style={{ 
-                  background: 'transparent',
-                  borderColor: '#ef4444',
-                  color: '#ef4444',
-                }}
-              >
-                <X className="w-3.5 h-3.5" />
-                <span>Remove API Key</span>
-              </button>
-            )}
-          </div>
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="block text-center text-[10px] mt-2 underline" style={{ color: greenAccent.primary }}>Get your free API key →</a>
-        </div>
-      )}
       {analysis && proAnalysis && (
           <div className={`p-3 rounded-xl ${isDarkMode ? 'bg-[#1C1C1E]' : 'bg-white'} border ${isDarkMode ? 'border-white/10' : 'border-black/10'}`} style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
             <div className="flex items-center justify-between mb-2">
@@ -1257,7 +1218,7 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
     
     return (
       <div 
-        className={`w-full h-full min-h-0 flex flex-col overflow-hidden ${isDarkMode ? 'bg-[#050505]' : 'bg-[#F0F0F0]'} relative`}
+        className={`w-full flex-1 min-h-0 flex flex-col overflow-hidden ${isDarkMode ? 'bg-[#050505]' : 'bg-[#F0F0F0]'} relative`}
         style={{
           height: '100%',
           maxHeight: '100%',
@@ -1304,8 +1265,8 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
             }
           `}
         </style>
-        {/* Trading Types: Scalping, Intraday, Swing, Position */}
-        <div className="shrink-0 px-4 pt-3 pb-2">
+        {/* Trading Types: Scalping, Intraday, Swing, Position - can shrink on short screens */}
+        <div className="min-h-[52px] flex-shrink px-4 pt-3 pb-2">
           <TimeframeSelector 
             variant="insight" 
             selectedTimeframe={timeframe} 
@@ -1321,22 +1282,88 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
             showTradingTypes={true} 
           />
         </div>
-        {/* 5 selectable asset cards: XAUUSD, BTCUSD, US30, NAS100, SPX — replaces top bar + select */}
-        <div className="insight-asset-cards-container">
+        {/* 5 selectable asset cards - can shrink on short screens (same layer as brain) */}
+        <div className="insight-asset-cards-container min-h-[64px] flex-shrink">
         <InsightAssetCards selectedInternal={symbol} onSelect={setSymbol} isDarkMode={isDarkMode} />
               </div>
         
-        {/* SpotlightCard Container - Fixed above bottom nav on mobile, no padding */}
+        {/* Brain button - same layer as asset cards, no absolute overlay */}
+        {!analysis && !isAnalyzing && !isFetchingCandles && (
+          <div className="flex-1 min-h-[120px] flex items-center justify-center py-4">
+            <div className="relative">
+              <div 
+                className="absolute inset-0 rounded-full" 
+                style={{ 
+                  border: `2px solid ${greenAccent.primary}`, 
+                  opacity: 0.3, 
+                  margin: '-20px', 
+                  width: 'calc(100% + 40px)', 
+                  height: 'calc(100% + 40px)',
+                  animation: isBrainButtonPressed ? 'none' : 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                }} 
+              />
+              <button
+                onClick={analyzeSetup}
+                disabled={isAnalyzing || isFetchingCandles || !livePrice}
+                className="w-20 h-20 rounded-full flex items-center justify-center cursor-pointer touch-manipulation relative"
+                style={{ 
+                  background: `linear-gradient(135deg, ${greenAccent.primary}20 0%, ${greenAccent.dark}10 100%)`, 
+                  border: `3px solid ${greenAccent.primary}80`,
+                  animation: isBrainButtonPressed ? 'none' : 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                  boxShadow: isBrainButtonPressed
+                    ? `0 0 30px ${greenAccent.glow}, inset 0 0 15px ${greenAccent.glow}30, 0 4px 8px rgba(0, 0, 0, 0.3)`
+                    : `0 0 50px ${greenAccent.glow}, inset 0 0 25px ${greenAccent.glow}50, 0 8px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 197, 94, 0.2)`,
+                  transform: isBrainButtonPressed
+                    ? 'perspective(1000px) translateZ(-8px) rotateX(5deg) scale(0.95)'
+                    : 'perspective(1000px) translateZ(12px) rotateX(-5deg)',
+                  transformStyle: 'preserve-3d',
+                  transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+                  WebkitTapHighlightColor: 'transparent',
+                  opacity: !livePrice ? 0.5 : 1,
+                  isolation: 'isolate',
+                }}
+                onPointerDown={() => {
+                  if (!isAnalyzing && !isFetchingCandles && livePrice) {
+                    setIsBrainButtonPressed(true);
+                  }
+                }}
+                onPointerUp={() => setIsBrainButtonPressed(false)}
+                onPointerLeave={() => setIsBrainButtonPressed(false)}
+                onPointerCancel={() => setIsBrainButtonPressed(false)}
+              >
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: `radial-gradient(circle at 30% 30%, ${greenAccent.primary}40, transparent 70%)`,
+                    opacity: isBrainButtonPressed ? 0.6 : 0.8,
+                    transition: 'opacity 0.15s ease',
+                    transform: 'translateZ(4px)',
+                  }}
+                />
+                <Brain 
+                  className="w-10 h-10 relative z-10" 
+                  style={{ 
+                    color: greenAccent.primary,
+                    animation: isBrainButtonPressed ? 'none' : 'brain-think 1.5s ease-in-out infinite',
+                    filter: `drop-shadow(0 0 8px ${greenAccent.glow})`,
+                    transform: isBrainButtonPressed
+                      ? 'translateZ(4px) scale(0.9)'
+                      : 'translateZ(8px)',
+                    transition: 'transform 0.15s ease',
+                    pointerEvents: 'none',
+                  }} 
+                />
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* SpotlightCard Container - Only when analysis (or analyzing/fetching); min height so area never collapses */}
+        {(analysis || isAnalyzing || isFetchingCandles) && (
         <div 
-          className="flex-1 min-h-0 relative insight-spotlight-container"
+          className="flex-1 min-h-0 relative insight-spotlight-container overflow-hidden"
           style={{
-            height: isMobileState 
-              ? `calc(100% - ${mobileBottomSpace}px - env(safe-area-inset-bottom, 0px))` 
-              : '100%',
-            maxHeight: isMobileState 
-              ? `calc(100% - ${mobileBottomSpace}px - env(safe-area-inset-bottom, 0px))` 
-              : '100%',
-            overflow: 'hidden',
+            minHeight: 120,
             paddingBottom: 0,
             marginBottom: 0,
             padding: 0,
@@ -1355,124 +1382,23 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
               overflow: 'hidden',
             }}
           >
-            
-            {/* Scrollable Content Area - Full screen edge-to-edge inside SpotlightCard */}
             <div 
-              className="flex-1 min-h-0 overflow-y-auto custom-scrollbar relative flex flex-col insight-scrollable-content" 
+              className="flex flex-col w-full flex-1 min-h-0 overflow-x-hidden overflow-y-auto custom-scrollbar relative" 
               style={{ 
+                touchAction: 'pan-y', 
                 width: '100%', 
                 maxWidth: '100%', 
                 boxSizing: 'border-box',
-                height: '100%',
-                maxHeight: '100%',
-                overflowY: 'auto',
-                padding: 0,
-                margin: 0,
+                padding: '0.75rem',
+                paddingBottom: isApiKeySet ? '0.5rem' : '0.75rem',
               }}
               data-mecca-ai-scroll
             >
-              {/* Preloading State - Centered clickable brain button when API key is set but no analysis yet */}
-              {isApiKeySet && !analysis && !isAnalyzing && !isFetchingCandles && (
-                <div className="absolute inset-0 flex items-center justify-center z-10" style={{ width: '100%', height: '100%' }}>
-                  <div className="flex flex-col items-center justify-center gap-6">
-                    <div className="relative">
-                      <div 
-                        className="absolute inset-0 rounded-full" 
-                        style={{ 
-                          border: `2px solid ${greenAccent.primary}`, 
-                          opacity: 0.3, 
-                          margin: '-20px', 
-                          width: 'calc(100% + 40px)', 
-                          height: 'calc(100% + 40px)',
-                          animation: isBrainButtonPressed ? 'none' : 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
-                        }} 
-                      />
-                      <button
-                        onClick={analyzeSetup}
-                        disabled={isAnalyzing || isFetchingCandles || !livePrice}
-                        className="w-20 h-20 rounded-full flex items-center justify-center cursor-pointer touch-manipulation relative"
-                        style={{ 
-                          background: `linear-gradient(135deg, ${greenAccent.primary}20 0%, ${greenAccent.dark}10 100%)`, 
-                          border: `3px solid ${greenAccent.primary}80`,
-                          animation: isBrainButtonPressed ? 'none' : 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                          boxShadow: isBrainButtonPressed
-                            ? `0 0 30px ${greenAccent.glow}, inset 0 0 15px ${greenAccent.glow}30, 0 4px 8px rgba(0, 0, 0, 0.3)`
-                            : `0 0 50px ${greenAccent.glow}, inset 0 0 25px ${greenAccent.glow}50, 0 8px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 197, 94, 0.2)`,
-                          transform: isBrainButtonPressed
-                            ? 'perspective(1000px) translateZ(-8px) rotateX(5deg) scale(0.95)'
-                            : 'perspective(1000px) translateZ(12px) rotateX(-5deg)',
-                          transformStyle: 'preserve-3d',
-                          transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
-                          WebkitTapHighlightColor: 'transparent',
-                          opacity: !livePrice ? 0.5 : 1,
-                          zIndex: 9999,
-                          isolation: 'isolate',
-                        }}
-                        onPointerDown={() => {
-                          if (!isAnalyzing && !isFetchingCandles && livePrice) {
-                            setIsBrainButtonPressed(true);
-                          }
-                        }}
-                        onPointerUp={() => {
-                          setIsBrainButtonPressed(false);
-                        }}
-                        onPointerLeave={() => {
-                          setIsBrainButtonPressed(false);
-                        }}
-                        onPointerCancel={() => {
-                          setIsBrainButtonPressed(false);
-                        }}
-                      >
-                        {/* 3D Inner glow effect when button is active */}
-                        <div
-                          className="absolute inset-0 rounded-full"
-                          style={{
-                            background: `radial-gradient(circle at 30% 30%, ${greenAccent.primary}40, transparent 70%)`,
-                            opacity: isBrainButtonPressed ? 0.6 : 0.8,
-                            transition: 'opacity 0.15s ease',
-                            transform: 'translateZ(4px)',
-                        }}
-                        />
-                        <Brain 
-                          className="w-10 h-10 relative z-10" 
-                          style={{ 
-                            color: greenAccent.primary,
-                            animation: isBrainButtonPressed ? 'none' : 'brain-think 1.5s ease-in-out infinite',
-                            filter: `drop-shadow(0 0 8px ${greenAccent.glow})`,
-                            transform: isBrainButtonPressed
-                              ? 'translateZ(4px) scale(0.9)'
-                              : 'translateZ(8px)',
-                            transition: 'transform 0.15s ease',
-                            pointerEvents: 'none',
-                          }} 
-                        />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Main Content - API Setup, Analysis, etc. - Centered and fills space edge-to-edge */}
-              <div 
-                className="flex flex-col w-full h-full overflow-x-hidden relative z-0" 
-                style={{ 
-                  touchAction: 'pan-y', 
-                  width: '100%', 
-                  maxWidth: '100%', 
-                  boxSizing: 'border-box',
-                  height: '100%',
-                  minHeight: '100%',
-                  justifyContent: showApiKeySetup ? 'flex-start' : (!isApiKeySet && !analysis ? 'center' : 'flex-start'),
-                  alignItems: 'stretch',
-                  padding: '0.75rem',
-                  paddingBottom: isApiKeySet ? '0.5rem' : '0.75rem', // Less bottom padding when button is visible
-                }}
-              >
-                {aiPanelScrollContent}
-            </div>
+              {aiPanelScrollContent}
             </div>
           </MeccaSpotlightCard>
         </div>
+        )}
         {/* Modals - portaled to journal-xx-modal-root when in Journal XX (History page) so they show inside the page */}
         {createPortal(
           <>
@@ -1566,7 +1492,7 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
         {/* API Key Setup Modal - Slides up from bottom to 1/3 of screen */}
         {showApiKeyModal && typeof document !== 'undefined' && createPortal(
           <>
-            {/* Backdrop - Transparent */}
+            {/* Backdrop - Transparent (no darkening) */}
             <div 
               className="fixed inset-0 z-[99998] bg-transparent transition-opacity duration-300"
               onClick={() => {
@@ -1575,29 +1501,30 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
               }}
             />
             
-            {/* Modal - Slides up from bottom, positioned just below SPX asset cards */}
+            {/* Modal - Glassmorphism sheet, slides up from bottom */}
             <div
-              className="fixed left-0 right-0 z-[99999] bg-white dark:bg-[#0A0A0A] rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out"
+              className="fixed left-0 right-0 z-[99999] rounded-t-3xl shadow-2xl border-t backdrop-blur-xl bg-white/75 dark:bg-[#0A0A0A]/80 dark:border-white/10 border-slate-200/50"
               style={{
-                top: `${assetCardsBottom}px`, // Start just below asset cards (SPX button)
-                height: `calc(100vh - ${assetCardsBottom}px - env(safe-area-inset-bottom, 0px))`, // Fill remaining space
-                maxHeight: `calc(100vh - ${assetCardsBottom}px - env(safe-area-inset-bottom, 0px))`,
-                transform: 'translateY(0)', // Slides up from bottom
-                bottom: 'auto',
+                bottom: 0,
+                top: 'auto',
+                height: 'calc(100vh / 3)',
+                maxHeight: 'calc(100vh / 3)',
+                transform: apiKeyModalAnimatedIn ? 'translateY(0)' : 'translateY(100%)',
+                transition: 'transform 300ms cubic-bezier(0.32, 0.72, 0, 1)',
               }}
               onTouchStart={handleApiKeyModalTouchStart}
               onTouchMove={handleApiKeyModalTouchMove}
               onTouchEnd={handleApiKeyModalTouchEnd}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Swipe indicator */}
+              {/* Swipe indicator - glass */}
               <div className="flex justify-center pt-3 pb-2">
-                <div className="w-12 h-1 bg-slate-400 dark:bg-slate-600 rounded-full" />
+                <div className="w-12 h-1 rounded-full bg-white/20 dark:bg-white/20 backdrop-blur-sm" />
               </div>
 
-              {/* Modal Content - Not scrollable */}
-              <div className="h-full overflow-hidden px-4 pt-4 pb-6 flex flex-col">
-                <div className={`p-3 rounded-xl ${isDarkMode ? 'bg-[#1C1C1E]' : 'bg-white'} border ${isDarkMode ? 'border-white/10' : 'border-black/10'} flex-1 flex flex-col`} style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+              {/* Modal Content - Not scrollable, safe area padding */}
+              <div className="h-full overflow-hidden px-4 pt-4 flex flex-col" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px))' }}>
+                <div className={`p-3 rounded-xl flex-1 flex flex-col backdrop-blur-md border ${isDarkMode ? 'bg-white/[0.06] border-white/10' : 'bg-black/[0.04] border-slate-300/50'}`} style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)` }}>
@@ -1621,15 +1548,15 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
                         } 
                       }} 
                       placeholder="Paste your API key..." 
-                      className={`w-full px-3 py-2 pr-10 rounded-lg text-xs ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 text-white' : 'bg-slate-100 border-slate-300 text-stone-900'} ${apiKeyStatus === 'invalid' ? 'border-red-500' : ''}`} 
+                      className={`w-full px-3 py-2 pr-10 rounded-lg text-xs backdrop-blur-sm border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder-slate-400' : 'bg-black/5 border-slate-300/50 text-stone-900 placeholder-slate-500'} ${apiKeyStatus === 'invalid' ? 'border-red-500' : ''}`} 
                     />
                     <button onClick={() => setShowApiKey(!showApiKey)} className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>
                       {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                   </div>
                   {apiKeyStatus === 'invalid' && error && (
-                    <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg mb-2" style={{ background: 'rgba(239,68,68,0.1)' }}>
-                      <AlertCircle className="w-3 h-3" style={{ color: neonColors.negative }} />
+                    <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg mb-2 backdrop-blur-sm bg-red-500/10 border border-red-500/20">
+                      <AlertCircle className="w-3 h-3 shrink-0" style={{ color: neonColors.negative }} />
                       <span className="text-[10px]" style={{ color: neonColors.negative }}>{error}</span>
                     </div>
                   )}
@@ -1637,7 +1564,7 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
                   <button 
                     onClick={handleSetApiKey} 
                     disabled={isValidatingKey || !apiKey.trim()} 
-                    className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5" 
+                    className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50" 
                     style={{ 
                       background: isValidatingKey ? neonColors.bgSecondary : `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)`, 
                       color: isValidatingKey ? neonColors.textMuted : '#000', 
@@ -1659,12 +1586,7 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
                     {isApiKeySet && (
                       <button 
                         onClick={handleRemoveApiKey}
-                        className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border-2 transition-all"
-                        style={{ 
-                          background: 'transparent',
-                          borderColor: '#ef4444',
-                          color: '#ef4444',
-                        }}
+                        className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border border-red-500/30 bg-red-500/10 backdrop-blur-sm text-red-500 hover:bg-red-500/20 transition-colors"
                       >
                         <X className="w-3.5 h-3.5" />
                         <span>Remove API Key</span>
@@ -1773,14 +1695,14 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
         portalContainer
       )}
 
-      {/* API Key Setup Modal - Slides up from bottom - Render at root level using portal */}
+      {/* API Key Setup Modal - Glassmorphism, slides up from bottom */}
       {showApiKeyModal && typeof document !== 'undefined' && createPortal(
         <>
-          {/* Backdrop - Only covers area below header, transparent above */}
+          {/* Backdrop - Transparent (no darkening) */}
           <div 
-            className="fixed left-0 right-0 bottom-0 z-[99998] bg-black/50 backdrop-blur-sm transition-opacity duration-300"
-                style={{
-              top: typeof window !== 'undefined' && window.innerWidth < 768 ? '72px' : '80px', // Start below header
+            className="fixed left-0 right-0 bottom-0 z-[99998] bg-transparent transition-opacity duration-300"
+            style={{
+              top: typeof window !== 'undefined' && window.innerWidth < 768 ? '72px' : '80px',
             }}
             onClick={() => {
               setShowApiKeyModal(false);
@@ -1788,32 +1710,30 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
             }}
           />
           
-          {/* Modal - Covers SpotlightCard area and bottom nav bar, starts below header */}
-                    <div
-            className="fixed left-0 right-0 bottom-0 z-[99999] bg-white dark:bg-[#0A0A0A] rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out"
-                      style={{
-              top: typeof window !== 'undefined' && window.innerWidth < 768 ? '72px' : '80px', // Start below header
-              height: typeof window !== 'undefined' && window.innerWidth < 768
-                ? `calc(100% - 72px - env(safe-area-inset-bottom, 0px))` // Viewport - header (72px) - safe area on mobile
-                : `calc(100% - 80px)`, // Viewport - header (80px) on desktop
-              maxHeight: typeof window !== 'undefined' && window.innerWidth < 768
-                ? `calc(100% - 72px - env(safe-area-inset-bottom, 0px))`
-                : `calc(100% - 80px)`,
-              transform: 'translateY(0)',
+          {/* Modal - Glassmorphism sheet, slides up from bottom */}
+          <div
+            className="fixed left-0 right-0 z-[99999] rounded-t-3xl shadow-2xl border-t backdrop-blur-xl bg-white/75 dark:bg-[#0A0A0A]/80 dark:border-white/10 border-slate-200/50"
+            style={{
+              bottom: 0,
+              top: 'auto',
+              height: 'calc(100vh / 3)',
+              maxHeight: 'calc(100vh / 3)',
+              transform: apiKeyModalAnimatedIn ? 'translateY(0)' : 'translateY(100%)',
+              transition: 'transform 300ms cubic-bezier(0.32, 0.72, 0, 1)',
             }}
             onTouchStart={handleApiKeyModalTouchStart}
             onTouchMove={handleApiKeyModalTouchMove}
             onTouchEnd={handleApiKeyModalTouchEnd}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Swipe indicator */}
+            {/* Swipe indicator - glass */}
             <div className="flex justify-center pt-3 pb-2">
-              <div className="w-12 h-1 bg-slate-400 dark:bg-slate-600 rounded-full" />
-                    </div>
+              <div className="w-12 h-1 rounded-full bg-white/20 dark:bg-white/20 backdrop-blur-sm" />
+            </div>
 
             {/* Modal Content */}
             <div className="h-full overflow-y-auto custom-scrollbar px-4 pt-4" style={{ paddingBottom: 'max(6rem, calc(6rem + env(safe-area-inset-bottom, 0px)))' }}>
-              <div className={`p-3 rounded-xl ${isDarkMode ? 'bg-[#1C1C1E]' : 'bg-white'} border ${isDarkMode ? 'border-white/10' : 'border-black/10'}`} style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+              <div className={`p-3 rounded-xl backdrop-blur-md border ${isDarkMode ? 'bg-white/[0.06] border-white/10' : 'bg-black/[0.04] border-slate-300/50'}`} style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)` }}>
@@ -1826,51 +1746,60 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
                   </div>
                 </div>
                 <div className="relative mb-2">
-                      <input
-                        type={showApiKey ? 'text' : 'password'}
-                        value={apiKey}
-                        onChange={(e) => {
-                          setApiKey(e.target.value);
-                          if (apiKeyStatus !== 'idle') {
-                            setApiKeyStatus('idle');
-                            setError(null);
-                          }
-                        }}
-                    placeholder="Paste your API key..." 
-                    className={`w-full px-3 py-2 pr-10 rounded-lg text-xs ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50 text-white' : 'bg-slate-100 border-slate-300 text-stone-900'} ${apiKeyStatus === 'invalid' ? 'border-red-500' : ''}`} 
-                      />
+                  <input
+                    type={showApiKey ? 'text' : 'password'}
+                    value={apiKey}
+                    onChange={(e) => {
+                      setApiKey(e.target.value);
+                      if (apiKeyStatus !== 'idle') {
+                        setApiKeyStatus('idle');
+                        setError(null);
+                      }
+                    }}
+                    placeholder="Paste your API key..."
+                    className={`w-full px-3 py-2 pr-10 rounded-lg text-xs backdrop-blur-sm border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder-slate-400' : 'bg-black/5 border-slate-300/50 text-stone-900 placeholder-slate-500'} ${apiKeyStatus === 'invalid' ? 'border-red-500' : ''}`}
+                  />
                   <button onClick={() => setShowApiKey(!showApiKey)} className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 ${isDarkMode ? 'text-slate-400' : 'text-stone-500'}`}>
                     {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
+                  </button>
+                </div>
                 {apiKeyStatus === 'invalid' && error && (
-                  <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg mb-2" style={{ background: 'rgba(239,68,68,0.1)' }}>
-                    <AlertCircle className="w-3 h-3" style={{ color: neonColors.negative }} />
+                  <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg mb-2 backdrop-blur-sm bg-red-500/10 border border-red-500/20">
+                    <AlertCircle className="w-3 h-3 shrink-0" style={{ color: neonColors.negative }} />
                     <span className="text-[10px]" style={{ color: neonColors.negative }}>{error}</span>
                   </div>
                 )}
-                    <button
-                      onClick={handleSetApiKey}
-                      disabled={isValidatingKey || !apiKey.trim()}
-                  className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5" 
-                      style={{
-                    background: isValidatingKey ? neonColors.bgSecondary : `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)`, 
-                        color: isValidatingKey ? neonColors.textMuted : '#000',
-                    opacity: !apiKey.trim() ? 0.5 : 1 
-                      }}
-                    >
-                      {isValidatingKey ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <button
+                  onClick={handleSetApiKey}
+                  disabled={isValidatingKey || !apiKey.trim()}
+                  className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  style={{
+                    background: isValidatingKey ? neonColors.bgSecondary : `linear-gradient(135deg, ${greenAccent.primary} 0%, ${greenAccent.dark} 100%)`,
+                    color: isValidatingKey ? neonColors.textMuted : '#000',
+                    opacity: !apiKey.trim() ? 0.5 : 1,
+                  }}
+                >
+                  {isValidatingKey ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       <span>Validating...</span>
-                        </>
-                      ) : (
-                        <>
+                    </>
+                  ) : (
+                    <>
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       <span>{showApiKeySetup && isApiKeySet ? 'Update API Key' : 'Set API Key'}</span>
-                        </>
-                      )}
-                    </button>
+                    </>
+                  )}
+                </button>
+                {isApiKeySet && (
+                  <button
+                    onClick={handleRemoveApiKey}
+                    className="w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 mt-2 border border-red-500/30 bg-red-500/10 backdrop-blur-sm text-red-500 hover:bg-red-500/20 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Remove API Key</span>
+                  </button>
+                )}
                 <a 
                   href="https://aistudio.google.com/app/apikey" 
                   target="_blank" 
@@ -1881,10 +1810,10 @@ const MeccaXXDashboard = forwardRef<MeccaXXDashboardRef, MeccaXXDashboardProps>(
                   Get your free API key →
                 </a>
               </div>
-                </div>
-              </div>
-          </>,
-          document.body
+            </div>
+          </div>
+        </>,
+        document.body
       )}
       
       {/* Pro Analysis Modal - portaled to journal-xx-modal-root when in Journal XX (History page) */}

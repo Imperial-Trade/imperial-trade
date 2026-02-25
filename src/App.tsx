@@ -166,11 +166,13 @@ function App() {
     return (
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <RealtimeShutdownGuard />
-          <VersionChecker />
-          <CacheCleanerMount />
-          {/* Sonner Toaster for admin actions - glassmorphism style, bottom-right on desktop, bottom-center on mobile */}
-          <Toaster position="bottom-right" />
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <RealtimeShutdownGuard />
+            <VersionChecker />
+            <CacheCleanerMount />
+            {/* Sonner Toaster for admin actions - glassmorphism style, bottom-right on desktop, bottom-center on mobile */}
+            <Toaster position="bottom-right" />
+            <div className="app-router-wrapper flex-1 min-h-0 flex flex-col min-h-0 overflow-hidden">
           <BrowserRouter>
               <ScrollToTop />
               <AuthProvider>
@@ -430,6 +432,8 @@ function App() {
               </NotificationStoreProvider>
             </AuthProvider>
           </BrowserRouter>
+            </div>
+          </div>
       </ThemeProvider>
     </QueryClientProvider>
   );

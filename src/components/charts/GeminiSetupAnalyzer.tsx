@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { MeccaXXDashboard } from './mecca';
+import type { MeccaXXDashboardRef } from './mecca/MeccaXXDashboard';
+
+export type GeminiSetupAnalyzerRef = MeccaXXDashboardRef;
 
 interface GeminiSetupAnalyzerProps {
   className?: string;
@@ -14,18 +17,26 @@ interface GeminiSetupAnalyzerProps {
   insightOnly?: boolean;
 }
 
-export const GeminiSetupAnalyzer: React.FC<GeminiSetupAnalyzerProps> = ({ 
-  className = '',
-  isDarkMode = true,
-  mobileActiveTab,
-  onMobileTabChange,
-  isMobileInstance = false,
-  hideAiPanel = false,
-  insightOnly = false,
-}) => {
-  return (
+/**
+ * Forwards ref to MeccaXXDashboard so the Key button can open the API key modal
+ * (showApiKeySetup) and history can open analysis (openProAnalysis) from Journal XX.
+ */
+export const GeminiSetupAnalyzer = forwardRef<MeccaXXDashboardRef, GeminiSetupAnalyzerProps>(
+  (
+    {
+      className = '',
+      isDarkMode = true,
+      mobileActiveTab,
+      onMobileTabChange,
+      isMobileInstance = false,
+      hideAiPanel = false,
+      insightOnly = false,
+    },
+    ref
+  ) => (
     <div className={`w-full h-full min-h-0 flex flex-col ${className}`}>
-      <MeccaXXDashboard 
+      <MeccaXXDashboard
+        ref={ref}
         isDarkMode={isDarkMode}
         mobileActiveTab={mobileActiveTab}
         onMobileTabChange={onMobileTabChange}
@@ -34,7 +45,9 @@ export const GeminiSetupAnalyzer: React.FC<GeminiSetupAnalyzerProps> = ({
         insightOnly={insightOnly}
       />
     </div>
-  );
-};
+  )
+);
+
+GeminiSetupAnalyzer.displayName = 'GeminiSetupAnalyzer';
 
 export default GeminiSetupAnalyzer;

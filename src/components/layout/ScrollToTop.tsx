@@ -13,8 +13,9 @@ export function ScrollToTop() {
 
   useEffect(() => {
     if (location) {
-      // Scroll to top when route changes
       window.scrollTo(0, 0);
+      const scrollRoot = document.querySelector('[data-scroll-root]');
+      if (scrollRoot) scrollRoot.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     }
   }, [location?.pathname]);
 

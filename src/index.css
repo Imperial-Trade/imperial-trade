@@ -292,7 +292,6 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
   }
 
   /* Router/layout container only (do not style VersionChecker/Toaster divs) */
@@ -301,7 +300,6 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
   }
 
   /* Constrain Router output (anonymous wrapper between wrapper and LandingLayout) */
@@ -310,7 +308,6 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
   }
 
   /* Scroll root: ensure main content area can scroll on landing/dashboard */
@@ -323,7 +320,7 @@
 
   /* iOS PWA: Force fullscreen on all routes */
   @media (display-mode: standalone) {
-    html, body, #root {
+    html, body {
       position: fixed !important;
       top: 0 !important;
       left: 0 !important;
@@ -334,11 +331,22 @@
       height: -webkit-fill-available !important;
       overflow: hidden !important;
     }
+    #root {
+      position: relative !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      height: -webkit-fill-available !important;
+      overflow: hidden !important;
+    }
+    [data-scroll-root] {
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
   }
 
   /* iOS PWA: Additional check for standalone navigator property */
   @supports (-webkit-touch-callout: none) {
-    html.standalone, body.standalone, #root.standalone {
+    html.standalone, body.standalone {
       position: fixed !important;
       top: 0 !important;
       left: 0 !important;
@@ -347,6 +355,16 @@
       width: 100vw !important;
       height: 100dvh !important;
       overflow: hidden !important;
+    }
+    #root.standalone {
+      position: relative !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      overflow: hidden !important;
+    }
+    .standalone [data-scroll-root] {
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
     }
   }
 

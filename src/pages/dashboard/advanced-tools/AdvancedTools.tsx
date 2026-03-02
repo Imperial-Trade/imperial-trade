@@ -130,11 +130,11 @@ export default function AdvancedTools() {
         <span>Hover near the left edge to reveal the educational toolkit</span>
       </div>
     </motion.div>;
-  return <div className="min-h-screen bg-background">
+  return <div className="bg-background">
 
       {/* Main Content Area - Responsive Width with bottom padding for mobile nav */}
       <div 
-        className="w-full min-h-screen p-2 sm:p-4 lg:p-6 pt-2 lg:pt-4 md:pb-6 bg-background overflow-y-auto"
+        className="w-full p-2 sm:p-4 lg:p-6 pt-2 lg:pt-4 md:pb-6 bg-background"
         style={{
           paddingBottom: window.innerWidth < 768
             ? 'calc(env(safe-area-inset-bottom, 0px) + 72px + 1rem)'

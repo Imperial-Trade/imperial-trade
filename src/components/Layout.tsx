@@ -88,7 +88,7 @@ export default function Layout({
         )}
 
         {/* Main content - scrollable when content is long (e.g. Admin Tools) */}
-        <main data-scroll-root className={`w-full flex-1 min-h-0 overflow-y-auto ${isJournalXXPage ? '' : 'bg-background border-l border-border/10'} ${isJournalXXPage ? 'pt-0' : 'pt-0 lg:pt-20'}`}>
+        <main data-scroll-root className={`w-full flex-1 min-h-0 flex flex-col overflow-y-auto ${isJournalXXPage ? '' : 'bg-background border-l border-border/10'} ${isJournalXXPage ? 'pt-0' : 'pt-0 lg:pt-20'}`}>
           <ErrorBoundary componentName="Page Content">
             <Outlet />
           </ErrorBoundary>

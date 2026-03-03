@@ -25,9 +25,9 @@ export default defineConfig(({ mode }) => ({
     },
     // Watch for file changes and auto-reload
     watch: {
-      usePolling: false, // Use native file system events (faster than polling)
-      interval: 100, // Check for changes every 100ms (if polling is enabled)
-      ignored: ['**/node_modules/**', '**/.git/**', '**/dist/**'], // Ignore unnecessary files
+      usePolling: true, // Reliably detect changes (works in all browsers and editors)
+      interval: 300, // Check for changes every 300ms
+      ignored: ['**/node_modules/**', '**/.git/**', '**/dist/**'],
     },
   },
   plugins: [

@@ -144,7 +144,10 @@ export default function AdminTools() {
 
   return (
     <>
-      <div className="admin-tools-container w-full bg-background p-4 sm:p-6 lg:p-8 pt-0 lg:pt-20 pb-28 lg:pb-6">
+      <div
+        className="admin-tools-container flex-1 min-h-0 w-full bg-background p-4 sm:p-6 lg:p-8 pt-0 lg:pt-20 pb-28 lg:pb-6 overflow-y-auto"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         <div className="max-w-7xl mx-auto">
           {/* Dynamic content based on selected admin section */}
           <div className="space-y-4">

@@ -297,6 +297,8 @@
   /* Scroll root: ensure main content area can scroll on landing/dashboard */
   [data-scroll-root] {
     min-height: 0;
+    flex: 1 1 0%;
+    height: 0;
     -webkit-overflow-scrolling: touch;
     overflow-y: auto !important;
     overflow-x: hidden;

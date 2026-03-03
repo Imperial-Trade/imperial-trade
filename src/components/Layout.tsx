@@ -65,7 +65,7 @@ export default function Layout({
 
   // For dashboard pages, use sidebar layout
   return <SidebarProvider defaultOpen={false}>
-      <div className={`h-screen min-h-screen w-full flex flex-col overflow-hidden ${isJournalXXPage ? '' : 'bg-background'}`}>
+      <div className={`h-screen min-h-screen w-full flex flex-col ${isJournalXXPage ? '' : 'bg-background'}`}>
         {/* Authenticated Apple-style Navigation Bar - Desktop Only (Hidden on Journal XX) */}
         {!isJournalXXPage && (
           <ErrorBoundary componentName="Authenticated Navigation">

@@ -25,7 +25,7 @@ const NotFound = () => {
           <div className="flex flex-col gap-2">
             {user ? (
               <Button asChild>
-                <Link to="/dashboard/home">
+                <Link to="/dashboard/signal-stream">
                   <Home className="mr-2 h-4 w-4" />
                   Go to Dashboard
                 </Link>

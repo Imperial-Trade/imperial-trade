@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useLoginForm } from "@/hooks/useLoginForm";
 import { BrandHeader } from "@/components/account-request/BrandHeader";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
@@ -13,6 +13,7 @@ import { PageStyles } from "@/components/account-request/PageStyles";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 import { cleanupAuthState } from "@/utils/authUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { redirectToOrderflowApp } from "@/utils/environment";
 
 export default function SigninPage() {
   const [status, setStatus] = useState({
@@ -25,7 +26,6 @@ export default function SigninPage() {
     onSubmit,
     isSubmitting,
   } = useLoginForm();
-  const navigate = useNavigate();
 
   // Clear auth state only if not coming from password reset flow
   useEffect(() => {
@@ -61,9 +61,8 @@ export default function SigninPage() {
       console.log('✅ Login successful, waiting for auth state...');
       await new Promise(resolve => setTimeout(resolve, 200));
       
-      // Redirect to dashboard after successful login
-      // Use replace: true to maintain PWA context (no browser history entry)
-      navigate("/dashboard/home", { replace: true });
+      // Full page navigation to standalone Orderflow (e.g. localhost:8082 in dev)
+      redirectToOrderflowApp();
     } catch (error) {
       console.error("Login failed:", error);
       setStatus({

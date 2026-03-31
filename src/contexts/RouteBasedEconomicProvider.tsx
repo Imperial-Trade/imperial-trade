@@ -11,7 +11,7 @@ const ECONOMIC_ROUTES = [
   '/dashboard/signal-stream',
   '/dashboard/advanced-tools',
   '/dashboard/athena',
-  '/dashboard/home'
+  '/dashboard/signal-stream'
 ];
 
 export const RouteBasedEconomicProvider: React.FC<RouteBasedEconomicProviderProps> = ({ children }) => {

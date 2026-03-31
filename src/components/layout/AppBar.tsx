@@ -110,7 +110,7 @@ const AppBar: React.FC = () => {
 
     if (user) {
       return (
-        <Link to="/dashboard/home">
+        <Link to="/dashboard/signal-stream">
           <Button
             size="sm"
             className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
@@ -295,7 +295,7 @@ const AppBar: React.FC = () => {
                       {/* Auth Buttons - Mobile Style */}
                       {user ? (
                         <Link
-                          to="/dashboard/home"
+                          to="/dashboard/signal-stream"
                           onClick={closeMobileMenu}
                           className="flex items-center gap-3 p-3 min-h-[56px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation"
                         >

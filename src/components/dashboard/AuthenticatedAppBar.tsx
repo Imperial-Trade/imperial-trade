@@ -104,7 +104,7 @@ const AuthenticatedAppBar: React.FC = () => {
         }}
       >
         {/* Logo - Left side */}
-        <Link to="/dashboard/home" className="flex items-center gap-2 flex-shrink-0">
+        <Link to="/dashboard/signal-stream" className="flex items-center gap-2 flex-shrink-0">
           <Crown className="h-6 w-6 text-primary" />
           <span className="text-xl imperial-tech-font">IMPERIAL</span>
         </Link>

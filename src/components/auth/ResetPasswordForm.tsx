@@ -101,7 +101,7 @@ export const ResetPasswordForm = () => {
       
       // Redirect to the dashboard after a short delay
       setTimeout(() => {
-        navigate('/dashboard/home');
+        navigate('/dashboard/signal-stream');
       }, 2000);
 
     } catch (err) {

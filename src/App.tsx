@@ -68,7 +68,6 @@ const AccountRequest = lazyWithRetry(() => import("@/pages/landing-page/account-
 const AccountRequestStatus = lazyWithRetry(() => import("@/pages/landing-page/account-request-status/AccountRequestStatus"));
 
 // Dashboard Pages - Lazy Loaded with Retry
-const Home = lazyWithRetry(() => import("@/pages/dashboard/home/Home"));
 const Live = lazyWithRetry(() => import("@/pages/dashboard/live/Live"));
 const SignalStreamOptimized = lazyWithRetry(() => import("@/components/dashboard/SignalStreamOptimized"));
 const NewSignalPage = lazyWithRetry(() => import("@/pages/dashboard/new-signal/NewSignalPage"));
@@ -271,9 +270,12 @@ function App() {
                         >
                           <Route
                             index
-                            element={<Navigate to="/dashboard/home" replace />}
+                            element={<Navigate to="/dashboard/signal-stream" replace />}
                           />
-                          <Route path="home" element={<Home />} />
+                          <Route
+                            path="home"
+                            element={<Navigate to="/dashboard/signal-stream" replace />}
+                          />
                           <Route path="live" element={<Live />} />
                           <Route
                             path="signal-stream"

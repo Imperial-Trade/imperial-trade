@@ -63,7 +63,7 @@ export const ROUTES = {
 
   // Dashboard routes - Standardized to match sidebar navigation
   DASHBOARD: "/dashboard",
-  DASHBOARD_HOME: "/dashboard/home",
+  DASHBOARD_HOME: "/dashboard/signal-stream",
   DASHBOARD_SIGNALS: "/dashboard/signals",
   DASHBOARD_EDUCATION: "/dashboard/education",
   DASHBOARD_TOOLS: "/dashboard/tools",

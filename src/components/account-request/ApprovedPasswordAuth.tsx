@@ -298,7 +298,7 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
 
       console.log('✅ Auto-login successful');
       toast.success("Welcome! Your account is now active.");
-      setTimeout(() => navigate('/dashboard/home'), 1500);
+      setTimeout(() => navigate('/dashboard/signal-stream'), 1500);
 
     } catch (error: any) {
       console.error('💥 Unexpected error:', error);
@@ -377,7 +377,7 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
       }
 
       toast.success("Welcome! Your account is now active.");
-      setTimeout(() => navigate('/dashboard/home'), 1500);
+      setTimeout(() => navigate('/dashboard/signal-stream'), 1500);
 
     } catch (error: any) {
       console.error('💥 Unexpected error:', error);
@@ -490,7 +490,7 @@ export const ApprovedPasswordAuth: React.FC<ApprovedPasswordAuthProps> = ({
 
             {isCurrentlyAuthenticated ? (
               <Button
-                onClick={() => navigate('/dashboard/home')}
+                onClick={() => navigate('/dashboard/signal-stream')}
                 className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 h-12"
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />

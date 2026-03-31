@@ -7,8 +7,7 @@ import { isDevToolsEnabled } from '@/utils/featureFlags';
 
 // Define which routes need which subscriptions
 const ROUTE_SUBSCRIPTION_MAP: Record<string, string[]> = {
-  // Home dashboard - needs signals and prices
-  '/dashboard/home': ['signals', 'prices'],
+  // Dashboard index redirects to signal-stream; keep subscriptions for brief /dashboard hit
   '/dashboard': ['signals', 'prices'],
   
   // Signals page - needs full signals data

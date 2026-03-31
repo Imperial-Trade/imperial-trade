@@ -20,9 +20,24 @@ export const isProductionDomain = (): boolean => {
   return window.location.hostname === "www.tradeimperial.com";
 };
 
+/** Standalone Orderflow app (separate dev server, e.g. localhost:8082 — not embedded in Imperial). */
 export const getOrderFlowAppUrl = (): string => {
+  const envUrl = import.meta.env.VITE_ORDERFLOW_URL as string | undefined;
+  if (envUrl?.trim()) return envUrl.trim().replace(/\/$/, "");
+
+  if (typeof window !== "undefined") {
+    const h = window.location.hostname;
+    if (h === "localhost" || h === "127.0.0.1") {
+      return `http://${h}:8082`;
+    }
+  }
+
   return "https://www.tradeimperial.com/orderflow";
 };
+
+export function redirectToOrderflowApp(): void {
+  window.location.replace(getOrderFlowAppUrl());
+}
 
 export const getAcademyAppUrl = (): string => {
   return "https://www.tradeimperial.com/academy";

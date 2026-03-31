@@ -27,7 +27,7 @@ const DashboardNav: React.FC = () => {
 
   // Navigation items for dashboard
   const primaryNavItems = [
-    { to: "/dashboard/home", icon: LayoutDashboard, label: "Dashboard" },
+    { to: "/dashboard/signal-stream", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/dashboard/signal-stream", icon: Radio, label: "Signals" },
     { to: getAcademyAppUrl(), icon: GraduationCap, label: "Education", external: true },
   ];
@@ -91,7 +91,7 @@ const DashboardNav: React.FC = () => {
       
       <div className="w-full max-w-7xl h-full lg:h-auto flex items-center justify-between relative">
         {/* Logo */}
-        <Link to="/dashboard/home" className="flex items-center gap-3">
+        <Link to="/dashboard/signal-stream" className="flex items-center gap-3">
           <div className={`flex items-center gap-3 transition-opacity duration-500 ${
             hasSeenWelcome ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}>

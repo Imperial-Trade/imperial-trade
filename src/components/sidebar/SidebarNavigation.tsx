@@ -9,14 +9,11 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import {
-  Home,
   GraduationCap,
   Radio,
   Video,
   MessageSquare,
-  Briefcase,
   Wrench,
-  TrendingUp,
   Bot,
 } from "lucide-react";
 
@@ -28,10 +25,9 @@ export function SidebarNavigation({ isCollapsed }: SidebarNavigationProps) {
   const location = useLocation();
 
   const isActive = (url: string) => {
-    // Handle both exact matches and home route special case
-    if (url === "/dashboard/home") {
+    if (url === "/dashboard/signal-stream") {
       return (
-        location.pathname === "/dashboard/home" ||
+        location.pathname === "/dashboard/signal-stream" ||
         location.pathname === "/dashboard"
       );
     }
@@ -39,9 +35,8 @@ export function SidebarNavigation({ isCollapsed }: SidebarNavigationProps) {
   };
 
   const navigationItems = [
-    { to: "/dashboard/home", icon: Home, label: "Home" },
-    { to: "/dashboard/education", icon: GraduationCap, label: "Education" },
     { to: "/dashboard/signal-stream", icon: Radio, label: "Signal Stream" },
+    { to: "/dashboard/education", icon: GraduationCap, label: "Education" },
     { to: "/dashboard/live", icon: Video, label: "Live Sessions" },
     { to: "/dashboard/forum", icon: MessageSquare, label: "Forum" },
     { to: "/dashboard/journal-xx", icon: Wrench, label: "Advanced Tools" },

@@ -75,7 +75,7 @@ export const SimpleResetPasswordForm = () => {
         
         // Redirect to dashboard after success
         setTimeout(() => {
-          navigate('/dashboard/home');
+          navigate('/dashboard/signal-stream');
         }, 3000);
       } else {
         if (result.requiresAuth) {

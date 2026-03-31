@@ -70,7 +70,7 @@ export default function FinalCTA() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
-              {!loading && (user ? <Link to="/dashboard/home">
+              {!loading && (user ? <Link to="/dashboard/signal-stream">
                     <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-12 py-6 text-xl rounded-2xl transition-all duration-300 shadow-2xl">
                       Access Dashboard
                       <ArrowRight className="ml-3 h-6 w-6" />

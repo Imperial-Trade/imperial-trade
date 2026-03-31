@@ -35,8 +35,19 @@ export const getOrderFlowAppUrl = (): string => {
   return "https://www.tradeimperial.com/orderflow";
 };
 
+/**
+ * Query flag for Orderflow welcome after Imperial sign-in. Full-page redirects
+ * cannot carry React Router `location.state`; Orderflow reads this once and strips it.
+ * Must match orderflow `IMPERIAL_WELCOME_SEARCH_PARAM` + value `1`.
+ */
+export const ORDERFLOW_POST_LOGIN_WELCOME_PARAM = "imperialWelcome";
+
 export function redirectToOrderflowApp(): void {
-  window.location.replace(getOrderFlowAppUrl());
+  const base = getOrderFlowAppUrl();
+  const sep = base.includes("?") ? "&" : "?";
+  window.location.replace(
+    `${base}${sep}${ORDERFLOW_POST_LOGIN_WELCOME_PARAM}=1`
+  );
 }
 
 export const getAcademyAppUrl = (): string => {

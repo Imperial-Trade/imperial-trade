@@ -147,8 +147,51 @@ The application supports the following environment variables:
 
 - `VITE_SUPABASE_URL`: Your Supabase project URL
 - `VITE_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+- `STITCH_API_KEY`: Google Stitch API key (optional, for design generation scripts)
+- `STITCH_PROJECT_ID`: Reuse an existing Stitch project id (optional)
 
 **Note:** Environment variables are optional for development as the application includes fallback values for Lovable compatibility.
+
+## Google Stitch Integration (Design Workflow)
+
+Stitch is wired for **in-editor use in Cursor** (MCP) and a **CLI** for batch exports.
+
+### Cursor MCP (while editing)
+
+Project config: `.cursor/mcp.json` → server **`google-stitch`**.
+
+1. Add to `.env`:
+   ```sh
+   STITCH_API_KEY=your_key_here
+   STITCH_PROJECT_ID=optional_existing_project_id
+   ```
+2. **Cursor Settings → MCP** → reload / enable **`google-stitch`** (green = connected).
+3. In chat, ask the agent to use Stitch tools (e.g. `/stitch-design` command) when refining Insight UI.
+
+Design context for prompts lives in `.stitch/project.json`. Rule: `.cursor/rules/stitch-insight-design.mdc` (Insight / Pattern Stream files).
+
+### CLI generate (HTML + PNG export)
+
+```sh
+npm run stitch:generate -- --prompt "Insight create chat flow, Messenger quality, dark glassmorphism"
+```
+
+Outputs go to `stitch-output/`:
+- `*.html` (generated markup)
+- `*.png` (screen preview)
+- `*.json` (project/screen ids + source URLs)
+
+Reuse a Stitch project:
+
+```sh
+npm run stitch:generate -- --project-id 1234567890123456789 --prompt "Refine chat composer bar spacing"
+```
+
+Smoke-test the MCP script locally (expects auth error without a key):
+
+```sh
+npm run stitch:mcp
+```
 
 ### Troubleshooting
 

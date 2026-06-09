@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Calendar, Calculator, Brain, Search, Scale, ChevronRight, Sparkles, User, BarChart3, Settings, Shield, LogOut, X, Bell, GraduationCap, MessageSquare, Target, Trophy } from "lucide-react";
+import { BookOpen, Calendar, Calculator, Brain, Search, Scale, ChevronRight, Sparkles, User, BarChart3, Settings, Shield, LogOut, X, Bell, GraduationCap, MessageSquare, Target, Trophy, Lightbulb } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { TradingSessionIndicator } from "@/components/ui/TradingSessionIndicator";
 import { useAuth } from "@/contexts/AuthContext";
@@ -51,11 +51,11 @@ const tradingTools = [{
   description: "Live trading signals and market alerts.",
   route: "/dashboard/signal-stream"
 }, {
-  name: "Education",
+  name: "Academy",
   icon: GraduationCap,
   description: "Courses, videos and learning pathways.",
   route: getAcademyAppUrl(),
-  external: true
+  external: true,
 }, {
   name: "Community",
   icon: MessageSquare,
@@ -114,6 +114,13 @@ export function WidgetSidebar({
 
   // Location detection for dynamic spacing
   const location = useLocation();
+
+  useEffect(() => {
+    const onOpen = () => setIsVisible(true);
+    window.addEventListener("imperial-open-widget-sidebar", onOpen);
+    return () =>
+      window.removeEventListener("imperial-open-widget-sidebar", onOpen);
+  }, []);
 
   // Dynamic sizing based on device
   const getSidebarDimensions = () => {
@@ -546,7 +553,7 @@ export function WidgetSidebar({
                 </motion.div>
               </div>
             </div>;
-        case "Education":
+        case "Academy":
           return <div className="w-full h-full bg-gradient-to-br from-slate-800 to-purple-900 dark:from-purple-100 dark:to-pink-50 rounded-lg overflow-hidden">
               <div className="p-1 sm:p-2 h-full flex items-center justify-center">
                 <motion.div animate={{
@@ -869,6 +876,70 @@ export function WidgetSidebar({
                 </div>
               </div>
             </motion.div>
+
+            <motion.button
+              onClick={() => {
+                navigate("/dashboard/insight");
+                handleClose();
+              }}
+              className="mt-3 w-full bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-xl sm:rounded-2xl p-2 sm:p-3 md:p-4 border border-white/20 dark:border-white/10 text-left transition-all duration-200"
+              whileHover={{
+                backgroundColor: "rgba(255, 255, 255, 0.15)",
+                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                y: -2
+              }}
+              whileTap={{ scale: 0.98 }}
+              aria-label="Open Insight"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-full flex items-center justify-center">
+                    <Lightbulb className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-foreground text-xs sm:text-sm font-medium truncate">
+                      Insight
+                    </div>
+                    <div className="text-foreground/60 text-[10px] sm:text-xs truncate">
+                      Community search
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="h-3 h-3 sm:h-4 sm:w-4 text-foreground/50" />
+              </div>
+            </motion.button>
+
+            <motion.button
+              onClick={() => {
+                navigate("/dashboard/pattern-stream/discover/public");
+                handleClose();
+              }}
+              className="mt-2 w-full bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-xl sm:rounded-2xl p-2 sm:p-3 md:p-4 border border-white/20 dark:border-white/10 text-left transition-all duration-200"
+              whileHover={{
+                backgroundColor: "rgba(255, 255, 255, 0.15)",
+                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                y: -2
+              }}
+              whileTap={{ scale: 0.98 }}
+              aria-label="Open ClassRooms"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-emerald-500 to-lime-500 rounded-full flex items-center justify-center">
+                    <Bell className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-foreground text-xs sm:text-sm font-medium truncate">
+                      ClassRooms
+                    </div>
+                    <div className="text-foreground/60 text-[10px] sm:text-xs truncate">
+                      Open provider rooms
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="h-3 h-3 sm:h-4 sm:w-4 text-foreground/50" />
+              </div>
+            </motion.button>
           </div>
 
           {/* Admin Tools Access - Only for privileged users */}

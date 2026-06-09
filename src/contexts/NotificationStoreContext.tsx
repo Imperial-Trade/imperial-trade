@@ -22,6 +22,9 @@ export interface StoredNotification {
   message: string;
   metadata?: {
     signal_id?: string;
+    room_id?: string;
+    link_url?: string;
+    event?: string;
     provider_name?: string;
     display_name?: string;
     provider_avatar_url?: string;
@@ -118,17 +121,26 @@ export const NotificationStoreProvider: React.FC<{ children: React.ReactNode }> 
         }
         
         if (data && data.length > 0) {
-          const dbNotifications: StoredNotification[] = data.map((row: any) => ({
+          const dbNotifications: StoredNotification[] = data.map((row: any) => {
+            const meta = (row.metadata && typeof row.metadata === "object" ? row.metadata : {}) as Record<
+              string,
+              unknown
+            >;
+            if (row.link_url && typeof row.link_url === "string") {
+              meta.link_url = row.link_url;
+            }
+            return {
             id: row.id,
             type: row.notification_type,
             title: row.title,
             message: row.message,
-            metadata: row.metadata || {},
+            metadata: meta,
             timestamp: new Date(row.created_at),
             eventKey: row.event_key,
             deliveryChannel: row.delivery_channel,
             priority: row.priority
-          }));
+          };
+          });
           
           console.log('✅ [NotificationStore] LOADED from database:', {
             count: dbNotifications.length,

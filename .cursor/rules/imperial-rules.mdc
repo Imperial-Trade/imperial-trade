@@ -47,6 +47,7 @@ Before executing ANY task:
 - Use template literals for dynamic classes: `` className={`base-class ${condition ? 'true-class' : 'false-class'}`} ``
 - **CRITICAL**: Never use `/90` opacity syntax in template literals - use `opacity-90` instead
 - Example: `via-[#050505] opacity-90` NOT `via-[#050505]/90`
+- **Insight** (`html.insight-orderflow-theme` in `src/index.css`): `--ring` is **neutral** (slate), not the cyan `--primary`, so shadcn `ring-ring` is never a blue focus halo. For custom pills, cards, and links on Insight, prefer `focus-visible:ring-2 focus-visible:ring-border focus-visible:ring-offset-0` (or `focus:ring-0` / `outline-none` if no ring is desired). Do not point Insight `--ring` at primary/accent colors.
 
 ### State Management
 - Use `useState` for local component state

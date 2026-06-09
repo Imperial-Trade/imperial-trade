@@ -9,8 +9,30 @@ import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { useOrderManagement } from '@/hooks/useOrderManagement';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
+type LimitOrderAlertInput = TradeAlertWithProfile & {
+  trade_type?: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
+  tradermade_symbol?: string;
+  asset_name?: string;
+  entry_price?: number;
+  user_id?: string;
+};
+
+function normalizeLimitOrderAlert(alert: LimitOrderAlertInput) {
+  const tradeType = alert.tradeType ?? alert.trade_type ?? 'buy';
+  const assetName = alert.assetName ?? alert.asset_name ?? 'Signal';
+  return {
+    id: alert.id,
+    tradeType,
+    assetName,
+    symbol: alert.tradermadeSymbol ?? alert.tradermade_symbol ?? assetName,
+    entryPrice: alert.entryPrice ?? alert.entry_price ?? 0,
+    status: alert.status,
+    userId: alert.userId ?? alert.user_id,
+  };
+}
+
 interface LimitOrderStatusProps {
-  alert: TradeAlertWithProfile;
+  alert: LimitOrderAlertInput;
   onCancel?: (id: string) => Promise<void>;
   onModify?: (id: string, newPrice: number) => Promise<void>;
 }
@@ -20,18 +42,20 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
   const { prices } = useOptimizedWebSocketPrices();
   const { cancelOrder, modifyOrderPrice } = useOrderManagement();
   const { userId } = useCurrentUser();
+  const normalized = normalizeLimitOrderAlert(alert);
   const [isModifying, setIsModifying] = useState(false);
-  const [newPrice, setNewPrice] = useState(alert.entryPrice);
+  const [newPrice, setNewPrice] = useState(normalized.entryPrice);
 
-  const isOwner = !!userId && alert.userId === userId;
+  const isOwner = !!userId && normalized.userId === userId;
 
-  const symbol = alert.tradermadeSymbol || alert.assetName;
+  const symbol = normalized.symbol;
   const currentPrice = prices[symbol]?.price || 0;
-  const entryPrice = alert.entryPrice;
-  const isLimitOrder = alert.tradeType.includes('limit');
-  const isPending = alert.status === 'pending';
-  const isBuyLimit = alert.tradeType === 'buy_limit';
-  const isSellLimit = alert.tradeType === 'sell_limit';
+  const entryPrice = normalized.entryPrice;
+  const tradeType = normalized.tradeType;
+  const isLimitOrder = tradeType.includes('limit');
+  const isPending = normalized.status === 'pending';
+  const isBuyLimit = tradeType === 'buy_limit';
+  const isSellLimit = tradeType === 'sell_limit';
 
   // Calculate distance to activation
   const distanceToActivation = Math.abs(currentPrice - entryPrice);
@@ -79,13 +103,13 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
       }
 
       if (onCancel) {
-        await onCancel(alert.id);
+        await onCancel(normalized.id);
       } else {
-        await cancelOrder(alert.id);
+        await cancelOrder(normalized.id);
       }
       toast({
         title: "Order Cancelled",
-        description: `${alert.assetName} limit order has been cancelled`,
+        description: `${normalized.assetName} limit order has been cancelled`,
       });
     } catch (error) {
       toast({
@@ -113,9 +137,9 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
     
     try {
       if (onModify) {
-        await onModify(alert.id, newPrice);
+        await onModify(normalized.id, newPrice);
       } else {
-        await modifyOrderPrice(alert.id, newPrice);
+        await modifyOrderPrice(normalized.id, newPrice);
       }
       setIsModifying(false);
       toast({
@@ -136,17 +160,17 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
   // Enhanced activation detection with optimistic UI
   useEffect(() => {
     if (shouldTrigger() && isPending) {
-      console.log(`🎯 ORDER ACTIVATION CONDITION MET: ${alert.assetName} - Current: ${currentPrice}, Entry: ${entryPrice}`);
+      console.log(`🎯 ORDER ACTIVATION CONDITION MET: ${normalized.assetName} - Current: ${currentPrice}, Entry: ${entryPrice}`);
       
 
       // Dispatch optimistic activation event for immediate UI feedback
       window.dispatchEvent(new CustomEvent('order-activation-detected', {
         detail: {
-          signalId: alert.id,
-          assetName: alert.assetName,
+          signalId: normalized.id,
+          assetName: normalized.assetName,
           currentPrice,
           entryPrice,
-          tradeType: alert.tradeType,
+          tradeType,
           timestamp: new Date().toISOString()
         }
       }));
@@ -154,7 +178,7 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
       // ✅ Limit activation notification sent by database trigger
       console.log('✅ [Limit Activated] Database trigger will send notification via Realtime');
     }
-  }, [shouldTrigger(), isPending, alert.id, alert.assetName, alert.tradeType, currentPrice, entryPrice]);
+  }, [shouldTrigger(), isPending, normalized.id, normalized.assetName, tradeType, currentPrice, entryPrice]);
 
   if (!isLimitOrder) return null;
 
@@ -167,7 +191,7 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
               <Clock className="h-4 w-4 text-muted-foreground" />
               <Badge variant="outline">Pending</Badge>
             </>
-          ) : alert.status === 'active' ? (
+          ) : normalized.status === 'active' ? (
             <>
               <CheckCircle className="h-4 w-4 text-green-500" />
               <Badge variant="default">Active</Badge>
@@ -175,7 +199,7 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
           ) : (
             <>
               <XCircle className="h-4 w-4 text-muted-foreground" />
-              <Badge variant="outline">{alert.status}</Badge>
+              <Badge variant="outline">{normalized.status}</Badge>
             </>
           )}
         </div>
@@ -202,7 +226,7 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
       </div>
 
 
-      {alert.status === 'active' && (alert as any).activatedAt && (
+      {normalized.status === 'active' && (alert as any).activatedAt && (
         <div className="text-sm text-muted-foreground">
           <span>Activated: {new Date((alert as any).activatedAt).toLocaleString()}</span>
           {(alert as any).activationPrice && (

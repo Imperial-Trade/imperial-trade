@@ -1,5 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { Crown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import TradeStatusBadge from './TradeStatusBadge';
 
 interface Creator {
@@ -26,6 +27,7 @@ interface AnimatedStatusHeaderProps {
   timestampRefreshKey?: number;
   // Action icons
   actionIcons?: React.ReactNode;
+  compact?: boolean;
 }
 
 const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
@@ -41,7 +43,8 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
   createdDate,
   updatedDate,
   timestampRefreshKey,
-  actionIcons
+  actionIcons,
+  compact = false,
 }) => {
   const getRoleDisplay = (role: string) => {
     const roleLower = role.toLowerCase();
@@ -83,17 +86,21 @@ const AnimatedStatusHeader: React.FC<AnimatedStatusHeaderProps> = ({
               {getRoleDisplay(creator.role)}
             </span>
           </div>
-          <div className="flex flex-col items-end gap-0.5">
-            <div className="text-xs text-muted-foreground">{timeAgoDisplay}</div>
+          <div className="flex flex-col items-end gap-0.5 shrink-0">
+            <div className={compact ? "text-[10px] text-muted-foreground" : "text-xs text-muted-foreground"}>
+              {timeAgoDisplay}
+            </div>
           </div>
         </div>
       )}
 
       {/* Currency Pair and Status - Decoupled from price updates */}
-      <div className="flex justify-between items-center">
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <h3 className="text-base font-bold">{assetName}</h3>
+      <div className="flex justify-between items-center gap-1">
+        <div className={cn("flex flex-col", compact ? "gap-0.5" : "gap-1.5")}>
+          <div className="flex items-center gap-1 flex-wrap">
+            <h3 className={compact ? "text-sm font-bold leading-tight" : "text-base font-bold"}>
+              {assetName}
+            </h3>
             <TradeStatusBadge 
               alert={{ status, trade_type: tradeType, tp_hits: hasTPHits ? [highestTP || 1] : [], close_reason: closeReason }} 
               updatedDate={updatedDate} 

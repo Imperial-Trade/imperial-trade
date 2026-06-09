@@ -1,9 +1,11 @@
 import React, { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { resolveNotificationNavigationTarget } from '@/utils/notificationNavigation';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Clock, X } from 'lucide-react';
-import { useNotificationStore } from '@/contexts/NotificationStoreContext';
+import { useNotificationStore, type StoredNotification } from '@/contexts/NotificationStoreContext';
 import { ProviderAvatar } from '@/components/notifications/ProviderAvatar';
 import { NotificationBadge } from '@/components/notifications/NotificationBadge';
 import { ProfitLossDisplay } from '@/components/notifications/ProfitLossDisplay';
@@ -54,8 +56,16 @@ export function NotificationSheet({
   onOpenNotificationSettings,
   slideDirection
 }: NotificationSheetProps) {
+  const navigate = useNavigate();
   // ✅ Use shared notification store - receives same data as ModernNotificationSystem
   const { getRecentNotifications, notifications: allNotifications } = useNotificationStore();
+
+  const openNotificationTarget = (metadata?: StoredNotification['metadata']) => {
+    const target = resolveNotificationNavigationTarget(metadata as Record<string, unknown> | undefined);
+    if (!target) return;
+    onClose();
+    navigate(target);
+  };
   const events = getRecentNotifications(100); // Show latest 100 notifications
   const { colors, isDark } = useSignalTheme();
   const { isMobile } = useDeviceDetection();
@@ -260,12 +270,23 @@ export function NotificationSheet({
               {events.map((event) => (
                 <Card
                   key={event.id}
+                  role={resolveNotificationNavigationTarget(event.metadata as Record<string, unknown>) ? "button" : undefined}
+                  tabIndex={resolveNotificationNavigationTarget(event.metadata as Record<string, unknown>) ? 0 : undefined}
+                  onClick={() => openNotificationTarget(event.metadata)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openNotificationTarget(event.metadata);
+                    }
+                  }}
                   className={cn(
                     "overflow-hidden border-2 border-l-4 shadow-2xl backdrop-blur-md",
                     "bg-gradient-to-br",
                     getGradientClass(event.type),
                     getBorderColor(event.type),
-                    "border-border/50"
+                    "border-border/50",
+                    resolveNotificationNavigationTarget(event.metadata as Record<string, unknown>) &&
+                      "cursor-pointer hover:border-border/80",
                   )}
                 >
                   <div className="p-4">
@@ -350,17 +371,17 @@ export function NotificationSheet({
                       <span className="text-muted-foreground text-xs">
                         {formatTimestamp(event.timestamp)}
                       </span>
-                      {event.metadata?.signal_id && (
+                      {resolveNotificationNavigationTarget(event.metadata as Record<string, unknown>) && (
                         <Button
                           variant="link"
                           size="sm"
                           className="text-primary text-xs p-0 h-auto hover:underline"
-                          onClick={() => {
-                            window.location.href = `/dashboard/signal-stream?signal=${event.metadata.signal_id}`;
-                            onClose();
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openNotificationTarget(event.metadata);
                           }}
                         >
-                          View Signal →
+                          {event.metadata?.room_id ? "Open chat →" : "View Signal →"}
                         </Button>
                       )}
                     </div>

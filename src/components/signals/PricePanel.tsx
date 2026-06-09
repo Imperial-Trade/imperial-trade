@@ -1,5 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { ArrowUp, ArrowDown, Target, XOctagon, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import LivePriceWidget from './LivePriceWidget';
 import { useOptimizedWebSocketPrices } from '@/contexts/OptimizedWebSocketPriceContext';
 import { useSignalTheme } from '@/hooks/useSignalTheme';
@@ -10,23 +11,27 @@ interface PriceRowProps {
   icon: React.ComponentType<{ className?: string }>;
   colorClass: string;
   isHit?: boolean;
+  compact?: boolean;
 }
 
-const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClass, isHit = false }) => {
+const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClass, isHit = false, compact = false }) => {
   const { colors, isDark } = useSignalTheme();
   
   return (
     <div 
-      className="flex justify-between items-center text-sm py-4 last:border-b-0"
+      className={cn(
+        "flex justify-between items-center last:border-b-0",
+        compact ? "text-xs py-2" : "text-sm py-4",
+      )}
       style={{
         borderBottom: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
         background: isHit ? colors.semantic.success : 'transparent',
       }}
     >
-      <div className="flex items-center space-x-3">
-        <Icon className={`w-5 h-5 ${colorClass}`} />
+      <div className={cn("flex items-center", compact ? "space-x-2" : "space-x-3")}>
+        <Icon className={cn(compact ? "w-4 h-4" : "w-5 h-5", colorClass)} />
         <span className="font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>{label}</span>
-        {isHit && <Check className="w-4 h-4 text-accent-green" />}
+        {isHit && <Check className={cn(compact ? "w-3 h-3" : "w-4 h-4", "text-accent-green")} />}
       </div>
       <span className={`font-mono font-semibold ${isHit ? 'text-accent-green' : ''}`} style={{ color: isHit ? undefined : 'rgba(255, 255, 255, 0.95)' }}>
         {value ? `$${value.toFixed(2)}` : '-'}
@@ -55,6 +60,7 @@ interface PricePanelProps {
   onTakeProfitHit?: (alert: any, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string) => Promise<void>;
   onStopLossHit?: (alert: any, closeReason: string) => Promise<void>;
   onOrderActivation?: (alert: any) => Promise<void>;
+  compact?: boolean;
 }
 
 // Static levels block component - memoized to prevent unnecessary re-renders
@@ -70,7 +76,8 @@ const StaticLevelsBlock = memo<{
   tpHitsKey: string;
   status: 'pending' | 'active' | 'closed' | 'partially_profited';
   closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired';
-}>(({ tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, status, closeReason }) => {
+  compact?: boolean;
+}>(({ tradeType, entryPrice, stopLoss, tp1, tp2, tp3, tp4, tp5, tpHitsKey, status, closeReason, compact = false }) => {
   const isBuy = tradeType?.includes('buy') ?? false;
   const takeProfits = [tp1, tp2, tp3, tp4, tp5].filter((tp): tp is number => tp !== undefined);
   const rawHitTPs = (tpHitsKey && tpHitsKey.trim()) ? tpHitsKey.split(',').map(Number).filter(n => !isNaN(n)) : [];
@@ -83,12 +90,13 @@ const StaticLevelsBlock = memo<{
     : [];
 
   return (
-    <div className="mt-2">
+    <div className={compact ? "mt-1" : "mt-2"}>
       <PriceRow 
         label="Entry Price" 
         value={entryPrice} 
         icon={isBuy ? ArrowUp : ArrowDown} 
-        colorClass={isBuy ? "text-accent-green" : "text-accent-red"} 
+        colorClass={isBuy ? "text-accent-green" : "text-accent-red"}
+        compact={compact}
       />
       <PriceRow 
         label="Stop Loss" 
@@ -96,6 +104,7 @@ const StaticLevelsBlock = memo<{
         icon={XOctagon} 
         colorClass="text-accent-red"
         isHit={closeReason === 'stop_loss'}
+        compact={compact}
       />
       {takeProfits.map((tp, index) => {
         const tpLevel = index + 1;
@@ -109,6 +118,7 @@ const StaticLevelsBlock = memo<{
             icon={Target} 
             colorClass={isHit ? "text-accent-green" : "text-muted-foreground"}
             isHit={isHit}
+            compact={compact}
           />
         );
       })}
@@ -119,8 +129,10 @@ const StaticLevelsBlock = memo<{
 const PricePanel: React.FC<PricePanelProps> = ({ 
   id, assetName, symbol, tradeType, entryPrice, stopLoss, 
   tp1, tp2, tp3, tp4, tp5, tpHitsKey, status, closeReason, allowAutomation,
-  onTakeProfitHit, onStopLossHit, onOrderActivation 
+  onTakeProfitHit, onStopLossHit, onOrderActivation,
+  compact = false,
 }) => {
+  const sectionPad = compact ? "px-2 pb-2" : "px-3 pb-3";
   // Get connection status and data source from WebSocket context
   const { connectionStatus, dataSource } = useOptimizedWebSocketPrices();
   // PHASE C: Reconstruct alert object with useMemo - stable reference unless primitives change
@@ -142,7 +154,7 @@ const PricePanel: React.FC<PricePanelProps> = ({
   // For active/pending/partially_profited trades, show LivePriceWidget + static levels
   if (status === 'active' || status === 'pending' || status === 'partially_profited') {
     return (
-      <div className="px-3 pb-3">
+      <div className={sectionPad}>
         <LivePriceWidget 
           alert={alert} 
           onTakeProfitHit={onTakeProfitHit}
@@ -150,8 +162,10 @@ const PricePanel: React.FC<PricePanelProps> = ({
           onOrderActivation={onOrderActivation}
           connectionStatus={connectionStatus === 'disconnected' ? 'error' : connectionStatus}
           priceSource={dataSource || 'WebSocket'}
+          compact={compact}
         />
         <StaticLevelsBlock
+          compact={compact}
           tradeType={tradeType}
           entryPrice={entryPrice}
           stopLoss={stopLoss}
@@ -170,7 +184,7 @@ const PricePanel: React.FC<PricePanelProps> = ({
 
   // For closed trades, show only static levels
   return (
-    <div className="px-3 pb-3">
+    <div className={sectionPad}>
       <StaticLevelsBlock
         tradeType={tradeType}
         entryPrice={entryPrice}
@@ -183,6 +197,7 @@ const PricePanel: React.FC<PricePanelProps> = ({
         tpHitsKey={tpHitsKey}
         status={status}
         closeReason={closeReason}
+        compact={compact}
       />
     </div>
   );

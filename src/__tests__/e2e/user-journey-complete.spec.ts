@@ -86,7 +86,7 @@ test.describe('Complete User Journey - E2E Tests', () => {
     await expect(page.locator('text=Journal entry added')).toBeVisible();
     
     // 7. Educational Content Engagement
-    await page.goto('/dashboard/education');
+    await page.goto('/dashboard/insight/classroom');
     
     const firstVideo = page.locator('[data-testid="video-card"]').first();
     await firstVideo.click();

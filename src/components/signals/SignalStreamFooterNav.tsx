@@ -4,6 +4,16 @@ import { useSignalTheme } from '@/hooks/useSignalTheme';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 import { Input } from '@/components/ui/input';
 
+/** Session key: Insight (and others) set this before navigating to Signal Stream to open a footer action. */
+export const SIGNAL_STREAM_FOOTER_NAV_INTENT_KEY =
+  'imperial-signal-stream-footer-intent';
+
+export type SignalStreamFooterNavIntent =
+  | 'filter'
+  | 'recent'
+  | 'notifications'
+  | 'create';
+
 interface FilterState {
   search: string;
   status: string;
@@ -21,6 +31,13 @@ interface SignalStreamFooterNavProps {
   onCreateAlert: () => void;
   educatorOptions: Array<{ id: string; name: string }>;
   canCreateSignals?: boolean;
+  /**
+   * When true, render only the inner toolbar row (no fixed `nav`, no frosted chrome).
+   * Parent supplies positioning / safe-area padding.
+   */
+  embedded?: boolean;
+  /** When true, show the bar even on tablet/desktop (default: mobile only). */
+  forceVisible?: boolean;
 }
 
 export const SignalStreamFooterNav: React.FC<SignalStreamFooterNavProps> = ({
@@ -32,6 +49,8 @@ export const SignalStreamFooterNav: React.FC<SignalStreamFooterNavProps> = ({
   onCreateAlert,
   educatorOptions,
   canCreateSignals = false,
+  embedded = false,
+  forceVisible = false,
 }) => {
   // All hooks must be called unconditionally before any early returns
   const { colors, isDark, theme } = useSignalTheme();
@@ -57,7 +76,7 @@ export const SignalStreamFooterNav: React.FC<SignalStreamFooterNavProps> = ({
     }
   }, [filters.search, isSearchFocused]);
 
-  // Memoize nav style to ensure it updates when theme changes
+  // Memoize nav style to ensure it updates when theme changes (skipped when embedded)
   const navStyle = useMemo(() => ({
     backdropFilter: 'blur(30px) saturate(180%)',
     WebkitBackdropFilter: 'blur(30px) saturate(180%)',
@@ -83,12 +102,11 @@ export const SignalStreamFooterNav: React.FC<SignalStreamFooterNavProps> = ({
     filters.educator !== 'all' && filters.educator !== '',
   ].filter(Boolean).length;
 
-  return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 z-[100] pb-safe"
-      style={navStyle}
+  const row = (
+    <div
+      className={embedded ? 'flex items-center gap-2 px-3 pt-0 pb-0' : 'flex items-center gap-2 px-3 pt-0 pb-0 pb-safe'}
+      style={{ transform: 'translateY(8px)' }}
     >
-      <div className="flex items-center gap-2 px-3 pt-0 pb-0 pb-safe" style={{ transform: 'translateY(8px)' }}>
         {/* Search Bar - Expands to full width when focused */}
         <div 
           className={`relative h-10 flex items-center transition-all duration-500 ease-in-out ${
@@ -217,6 +235,17 @@ export const SignalStreamFooterNav: React.FC<SignalStreamFooterNavProps> = ({
           )}
         </div>
       </div>
+  );
+
+  if (!isMobile && !forceVisible) return null;
+
+  if (embedded) {
+    return row;
+  }
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-[100] pb-safe" style={navStyle}>
+      {row}
     </nav>
   );
 };

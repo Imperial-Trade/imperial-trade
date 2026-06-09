@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { resolveNotificationNavigationTarget } from '@/utils/notificationNavigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
@@ -58,7 +60,8 @@ const MODERN_DEDUP_WINDOW_MS = 1500;
 
 const ModernNotificationSystem = () => {
   console.log('🚀 [ModernNotificationSystem] ===== COMPONENT RENDERING =====');
-  
+  const navigate = useNavigate();
+
   // ✅ useAuth() is safe here - component is inside AuthProvider in App.tsx
   const { user, loading: authLoading } = useAuth();
   const authReady = !authLoading && !!user?.id;
@@ -1050,16 +1053,19 @@ const ModernNotificationSystem = () => {
                     <span className="text-muted-foreground text-xs">
                       {notification.timestamp.toLocaleTimeString()}
                     </span>
-                    {notification.metadata?.signal_id && (
+                    {(notification.metadata?.signal_id || notification.metadata?.room_id) && (
                       <Button
                         variant="link"
                         size="sm"
                         className="text-primary text-xs p-0 h-auto"
                         onClick={() => {
-                          window.location.href = `/dashboard/signal-stream?signal=${notification.metadata?.signal_id}`;
+                          const target = resolveNotificationNavigationTarget(
+                            notification.metadata as Record<string, unknown> | undefined,
+                          );
+                          if (target) navigate(target);
                         }}
                       >
-                        View Signal →
+                        {notification.metadata?.room_id ? "Open chat →" : "View Signal →"}
                       </Button>
                     )}
                   </div>

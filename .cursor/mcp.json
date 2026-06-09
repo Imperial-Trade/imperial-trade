@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "google-stitch": {
+      "command": "node",
+      "args": ["${workspaceFolder}/scripts/stitch/mcp-server.mjs"],
+      "env": {
+        "STITCH_API_KEY": "${env:STITCH_API_KEY}",
+        "STITCH_ACCESS_TOKEN": "${env:STITCH_ACCESS_TOKEN}",
+        "STITCH_PROJECT_ID": "${env:STITCH_PROJECT_ID}"
+      },
+      "envFile": "${workspaceFolder}/.env"
+    }
+  }
+}

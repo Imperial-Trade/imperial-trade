@@ -62,12 +62,19 @@ export const useNotificationPolling = ({
         // Process each notification
         for (const dbNotif of notifications) {
           // Transform database notification to StoredNotification format
+          const meta =
+            dbNotif.metadata && typeof dbNotif.metadata === "object"
+              ? { ...(dbNotif.metadata as Record<string, unknown>) }
+              : {};
+          if (dbNotif.link_url) {
+            meta.link_url = dbNotif.link_url;
+          }
           const notification = {
             id: dbNotif.id,
             type: dbNotif.notification_type,
             title: dbNotif.title,
             message: dbNotif.message,
-            metadata: dbNotif.metadata,
+            metadata: meta,
             timestamp: new Date(dbNotif.created_at),
             eventKey: dbNotif.event_key,
             deliveryChannel: 'polling' as const,

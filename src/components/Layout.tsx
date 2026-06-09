@@ -1,4 +1,5 @@
 import { memo, ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { WidgetSidebar } from "@/components/navigation/WidgetSidebar";
@@ -47,7 +48,19 @@ export default function Layout({
   const location = useLocation();
   const isHomePage = location.pathname === '/';
   const isJournalXXPage = location.pathname === '/dashboard/journal-xx' || location.pathname === '/dashboard/journal-xx-pro';
+  const isPatternStreamPage = location.pathname.startsWith('/dashboard/pattern-stream');
+  const isInsightPage = location.pathname.startsWith('/dashboard/insight');
   const isMobile = useIsMobile();
+
+  // Pattern Stream is a standalone product (orderflow-style shell). Skip dashboard chrome
+  // entirely — its own layout renders header + feed column + bottom nav.
+  if (isPatternStreamPage) {
+    return (
+      <ErrorBoundary componentName="Page Content">
+        <Outlet />
+      </ErrorBoundary>
+    );
+  }
 
   // For home page, use AppBar instead of sidebar
   if (isHomePage) {
@@ -64,10 +77,17 @@ export default function Layout({
   }
 
   // For dashboard pages, use sidebar layout
-  return <SidebarProvider defaultOpen={false}>
-      <div className={`h-screen min-h-screen w-full flex flex-col ${isJournalXXPage ? '' : 'bg-background'}`}>
-        {/* Authenticated Apple-style Navigation Bar - Desktop Only (Hidden on Journal XX) */}
-        {!isJournalXXPage && (
+  const hideDashboardChrome = isJournalXXPage || isInsightPage;
+  return <SidebarProvider defaultOpen={false} className="min-h-screen min-h-0 flex flex-col bg-background">
+      <div
+        className={cn(
+          'w-full min-h-0 flex flex-1 flex-col bg-background',
+          /* Insight: Orderflow-style document scroll (window). Avoid `h-screen` + scroll on `main` — iOS PWA keyboard + body scroll-lock need `window.scrollY`. */
+          isInsightPage ? 'min-h-screen' : 'h-screen min-h-screen'
+        )}
+      >
+        {/* Authenticated Apple-style Navigation Bar - Desktop Only (Hidden on Journal XX + Insight) */}
+        {!hideDashboardChrome && (
           <ErrorBoundary componentName="Authenticated Navigation">
             <div className="hidden lg:block">
               <AuthenticatedAppBar />
@@ -75,20 +95,28 @@ export default function Layout({
           </ErrorBoundary>
         )}
 
-        {/* Mobile: Use existing Sheet-based sidebar - Hidden on Journal XX */}
-        {isMobile && !isJournalXXPage && <ErrorBoundary componentName="Mobile Sidebar">
+        {/* Mobile: Use existing Sheet-based sidebar - Hidden on Journal XX + Insight */}
+        {isMobile && !hideDashboardChrome && <ErrorBoundary componentName="Mobile Sidebar">
             <AppSidebar />
           </ErrorBoundary>}
 
-        {/* Tablet & Desktop: Use custom overlay sidebar - Hidden on Journal XX */}
-        {!isJournalXXPage && (
+        {/* Tablet & Desktop: Use custom overlay sidebar - Hidden on Journal XX + Insight */}
+        {!hideDashboardChrome && (
           <ErrorBoundary componentName="Sidebar Overlay">
             <SidebarOverlay />
           </ErrorBoundary>
         )}
 
-        {/* Main content - scrollable when content is long (e.g. Admin Tools) */}
-        <main data-scroll-root className={`w-full flex-1 min-h-0 flex flex-col overflow-y-auto ${isJournalXXPage ? '' : 'bg-background border-l border-border/10'} ${isJournalXXPage ? 'pt-0' : 'pt-0 lg:pt-20'}`}>
+        {/* Main content — dashboard scrolls here; Insight uses document scroll like Orderflow home/search */}
+        <main
+          {...(isInsightPage ? {} : { 'data-scroll-root': true })}
+          className={cn(
+            'w-full flex-1 min-h-0 flex flex-col bg-background',
+            !isInsightPage && 'overflow-y-auto',
+            hideDashboardChrome ? '' : 'border-l border-border/10',
+            hideDashboardChrome ? 'pt-0' : 'pt-0 lg:pt-20'
+          )}
+        >
           <ErrorBoundary componentName="Page Content">
             <Outlet />
           </ErrorBoundary>
@@ -104,8 +132,8 @@ export default function Layout({
             <AdminArsenalSidebar />
           </ErrorBoundary>}
         
-        {/* Compliance Footer - Hidden on Journal XX */}
-        {!isJournalXXPage && <ComplianceFooter />}
+        {/* Compliance Footer - Hidden on Journal XX + Insight */}
+        {!hideDashboardChrome && <ComplianceFooter />}
       </div>
     </SidebarProvider>;
 }

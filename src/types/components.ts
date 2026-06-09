@@ -50,6 +50,10 @@ export interface TradeAlertCardProps extends BaseComponentProps {
   onTakeProfitHit: (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => Promise<void>;
   onStopLossHit: (alert: TradeAlertData, closeReason: string) => Promise<void>;
   onOrderActivation: (alert: TradeAlertData) => Promise<void>;
+  /** When set, bypasses `close_trade_alert` RPC (e.g. Insight room signals). */
+  onCloseWithReason?: (reason: string) => Promise<void>;
+  /** When set, bypasses trade-alerts API for notes (e.g. Insight room signals). */
+  onNotesSave?: (notes: string) => Promise<void>;
   isAdmin: boolean;
   isCreator: boolean;
   livePrice?: number;
@@ -57,6 +61,8 @@ export interface TradeAlertCardProps extends BaseComponentProps {
   priceSource: string;
   isRecentClosure: boolean;
   timestampRefreshKey?: number;
+  /** Compact layout for Insight chat (`max-w-[85%]` clusters). */
+  compact?: boolean;
 }
 
 // Live Price Widget Types
@@ -68,6 +74,7 @@ export interface LivePriceWidgetProps extends BaseComponentProps {
   livePrice?: number;
   connectionStatus: 'connecting' | 'connected' | 'error' | 'polling';
   priceSource: string;
+  compact?: boolean;
 }
 
 // Trading Calculator Types

@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
-import { getAcademyAppUrl, getOrderFlowAppUrl } from "@/utils/environment"
+import { getOrderFlowAppUrl } from "@/utils/environment"
 
 interface SharedHeaderProps {
   /**
@@ -94,11 +94,10 @@ export function SharedHeader({ baseUrl = "" }: SharedHeaderProps) {
       description: "Educational market analysis and pattern recognition"
     },
     {
-      to: getAcademyAppUrl(),
+      to: `${baseUrl}/dashboard/insight/classroom`,
       icon: GraduationCap,
-      label: "Education", 
-      description: "Comprehensive trading education platform",
-      external: true
+      label: "Classroom",
+      description: "Video lessons inside Insight",
     },
     {
       to: `${baseUrl}/dashboard/live`,

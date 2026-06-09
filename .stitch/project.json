@@ -1,0 +1,10 @@
+{
+  "title": "Imperial Trade — Insight",
+  "defaultDevice": "MOBILE",
+  "outputDir": "stitch-output",
+  "designContext": {
+    "themeClass": "html.insight-orderflow-theme",
+    "tokens": "src/index.css, src/insight/insightCardTokens.ts, src/styles/pattern-stream-tokens.css",
+    "paletteNotes": "Dark glass UI, cyan primary (#0aa9cd), neutral slate rings, Messenger-style chat bubbles"
+  }
+}

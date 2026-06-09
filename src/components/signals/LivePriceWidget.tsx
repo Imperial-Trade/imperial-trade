@@ -8,6 +8,7 @@ import { useConnectionStability } from '@/hooks/useConnectionStability';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
 import { LivePriceWidgetErrorBoundary } from '@/components/ui/LivePriceWidgetErrorBoundary';
 import { LivePriceWidgetProps } from '@/types/components';
+import { cn } from '@/lib/utils';
 import { getMarketStatus } from '@/utils/marketStatus';
 import { getPipSize } from '@/utils/pipCalculations';
 
@@ -48,8 +49,9 @@ const LivePriceWidgetComponent = ({
   onTakeProfitHit,
   onStopLossHit,
   onOrderActivation,
-  allowAutomation = true
-}) => {
+  allowAutomation = true,
+  compact = false,
+}: LivePriceWidgetProps & { allowAutomation?: boolean }) => {
   // Move hooks inside the component
   const levelHitRef = useRef(globalLevelHitMap);
   const [localClosed, setLocalClosed] = useState(false);
@@ -625,11 +627,16 @@ const LivePriceWidgetComponent = ({
   }
 
   return (
-    <div className="bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm">
+    <div
+      className={cn(
+        "bg-card/50 border border-border rounded-lg backdrop-blur-sm",
+        compact ? "p-2" : "p-3",
+      )}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5">
-          <div className="text-white text-sm font-medium">
+      <div className={cn("flex items-center justify-between", compact ? "mb-1" : "mb-2")}>
+        <div className="flex items-center gap-1 min-w-0 flex-wrap">
+          <div className={cn("text-white font-medium", compact ? "text-[11px]" : "text-sm")}>
             {isMarketClosed ? 'Last Price' : 'Live Price'} for {alert.asset_name}
           </div>
           {isMarketClosed && (
@@ -674,13 +681,23 @@ const LivePriceWidgetComponent = ({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             {displayPrice > 0 ? (
-              <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
+              <div
+                className={cn(
+                  "font-mono font-bold px-1 py-0.5 rounded",
+                  compact ? "text-sm" : "text-lg",
+                )}
+              >
                 <span className="text-accent-green" style={{ willChange: 'transform' }}>
                   ${formatPrice(displayPrice)}
                 </span>
               </div>
             ) : (
-              <div className="text-muted-foreground font-mono text-lg min-h-[28px] flex items-center">
+              <div
+                className={cn(
+                  "text-muted-foreground font-mono flex items-center",
+                  compact ? "text-sm min-h-[22px]" : "text-lg min-h-[28px]",
+                )}
+              >
                 <span>{prevPrice > 0 ? `$${formatPrice(prevPrice)}` : 'Loading...'}</span>
               </div>
             )}

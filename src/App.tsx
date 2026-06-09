@@ -87,6 +87,20 @@ const PriceTestingPage = lazyWithRetry(() => import("@/pages/dashboard/dev-tests
 const JournalXXPage = lazyWithRetry(() => import("@/pages/tools-journal/JournalXX"));
 const JournalXXProPage = lazyWithRetry(() => import("@/pages/tools-journal/JournalXXPro"));
 
+// Pattern Stream Rooms - Lazy Loaded
+const PatternStreamLayout = lazyWithRetry(() => import("@/pages/dashboard/pattern-stream/PatternStreamLayout"));
+const DiscoverPublic = lazyWithRetry(() => import("@/pages/dashboard/pattern-stream/DiscoverPublic"));
+const DiscoverPrivate = lazyWithRetry(() => import("@/pages/dashboard/pattern-stream/DiscoverPrivate"));
+const MyRooms = lazyWithRetry(() => import("@/pages/dashboard/pattern-stream/MyRooms"));
+const RoomLayout = lazyWithRetry(() => import("@/pages/dashboard/pattern-stream/room/RoomLayout"));
+const RoomChatTab = lazyWithRetry(() => import("@/pages/dashboard/pattern-stream/room/ChatTab"));
+const RoomSignalsTab = lazyWithRetry(() => import("@/pages/dashboard/pattern-stream/room/SignalsTab"));
+const RoomRequestsTab = lazyWithRetry(() => import("@/pages/dashboard/pattern-stream/room/RequestsTab"));
+const RoomMembersTab = lazyWithRetry(() => import("@/pages/dashboard/pattern-stream/room/MembersTab"));
+const RoomSettingsTab = lazyWithRetry(() => import("@/pages/dashboard/pattern-stream/room/SettingsTab"));
+const ProviderConsole = lazyWithRetry(() => import("@/pages/dashboard/pattern-stream/console/ProviderConsole"));
+const InsightPage = lazyWithRetry(() => import("@/pages/dashboard/insight/InsightPage"));
+
 // Educator Pages - Lazy Loaded with Retry
 const EducatorSignalManagement = lazyWithRetry(() => import("@/pages/dashboard/educator/EducatorSignalManagement"));
 
@@ -281,8 +295,29 @@ function App() {
                             path="signal-stream"
                             element={<SignalStreamOptimized />}
                           />
-                  <Route
-                    path="new-signal"
+                          {/* Pattern Stream Rooms */}
+                          <Route path="pattern-stream" element={<PatternStreamLayout />}>
+                            <Route index element={<Navigate to="discover/public" replace />} />
+                            <Route path="discover/public" element={<DiscoverPublic />} />
+                            <Route path="discover/private" element={<DiscoverPrivate />} />
+                            <Route path="my-rooms" element={<MyRooms />} />
+                            <Route path="console/*" element={<ProviderConsole />} />
+                            <Route path="room/:roomId" element={<RoomLayout />}>
+                              <Route index element={<RoomChatTab />} />
+                              <Route path="chat" element={<RoomChatTab />} />
+                              <Route path="signals" element={<RoomSignalsTab />} />
+                              <Route path="requests" element={<RoomRequestsTab />} />
+                              <Route path="members" element={<RoomMembersTab />} />
+                              <Route path="settings" element={<RoomSettingsTab />} />
+                            </Route>
+                          </Route>
+                          <Route path="insight/classroom" element={<InsightPage />} />
+                          <Route path="insight/rooms" element={<InsightPage />} />
+                          <Route path="insight/settings" element={<InsightPage />} />
+                          <Route path="insight/settings/:section" element={<InsightPage />} />
+                          <Route path="insight" element={<InsightPage />} />
+                          <Route
+                            path="new-signal"
                     element={
                       <ProtectedRoute requiredRoles={['admin', 'educator', 'educator+']}>
                         <NewSignalPage />

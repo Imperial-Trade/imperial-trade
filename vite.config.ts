@@ -14,13 +14,14 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "0.0.0.0", // Accept connections from all interfaces so mobile can reach via your PC's IP (e.g. http://192.168.1.x:8080)
     port: 8080,
-    strictPort: false, // Allow port fallback if 8080 is in use
+    // Keep 8080 so LAN URL stays http://<this-machine>:8080 (e.g. 192.168.0.5:8080)
+    strictPort: true,
     allowedHosts: true, // Allow tunnel hosts (e.g. *.lhr.life) so mobile can load via dev:mobile
     // Add history API fallback for SPA routing
     historyApiFallback: true,
-    // Enable HMR - port follows dev server for immediate live preview on any port
+    // HMR must not use host: 'localhost' — that breaks when you open the app via LAN IP
+    // (phone/tablet would connect WebSocket to itself). Omit host so the client uses the page hostname.
     hmr: {
-      host: 'localhost',
       protocol: 'ws',
     },
     // Watch for file changes and auto-reload

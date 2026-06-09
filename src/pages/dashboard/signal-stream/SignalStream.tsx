@@ -20,7 +20,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
-import { SignalStreamFooterNav } from '@/components/signals/SignalStreamFooterNav';
+import {
+  SIGNAL_STREAM_FOOTER_NAV_INTENT_KEY,
+  type SignalStreamFooterNavIntent,
+  SignalStreamFooterNav,
+} from '@/components/signals/SignalStreamFooterNav';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 import { GlobalLeadershipBanner } from '@/components/dev/GlobalLeadershipBanner';
 import { isDevToolsEnabled } from '@/utils/featureFlags';
@@ -96,6 +100,52 @@ export default function SignalStream() {
   
   // Initialize selectedEducators with all educator IDs for consistency across devices
   const [hasInitializedEducators, setHasInitializedEducators] = useState(false);
+
+  /** After navigate from Insight (same footer nav), run filter/recent/globals or modals once mounted. */
+  useEffect(() => {
+    const raw = sessionStorage.getItem(SIGNAL_STREAM_FOOTER_NAV_INTENT_KEY);
+    if (!raw) return;
+    sessionStorage.removeItem(SIGNAL_STREAM_FOOTER_NAV_INTENT_KEY);
+    const intent = raw as SignalStreamFooterNavIntent;
+
+    if (intent === 'notifications') {
+      setShowProviderNotificationModal(true);
+      return;
+    }
+    if (intent === 'create') {
+      setShowCreateModal(true);
+      return;
+    }
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 80;
+
+    const tryGlobals = () => {
+      if (cancelled) return;
+      const w = window as unknown as {
+        __signalStreamOpenFilterSheet?: (t: 'status' | 'tradeType' | 'educator') => void;
+        __signalStreamOpenNotificationSheet?: () => void;
+      };
+      if (intent === 'filter' && w.__signalStreamOpenFilterSheet) {
+        w.__signalStreamOpenFilterSheet('status');
+        return;
+      }
+      if (intent === 'recent' && w.__signalStreamOpenNotificationSheet) {
+        w.__signalStreamOpenNotificationSheet();
+        return;
+      }
+      attempts += 1;
+      if (attempts < maxAttempts) {
+        requestAnimationFrame(tryGlobals);
+      }
+    };
+
+    requestAnimationFrame(tryGlobals);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // 🎯 HYBRID TP DETECTION: Get live prices from WebSocket
   const {

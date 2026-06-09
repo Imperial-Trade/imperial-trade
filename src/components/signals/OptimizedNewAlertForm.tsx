@@ -503,6 +503,8 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     setIsSubmitting(true);
 
     try {
+      const isLimitOrder =
+        formData.trade_type === "buy_limit" || formData.trade_type === "sell_limit";
       const submissionData: TradeAlertSubmissionData = {
         asset_name: formData.asset_name,
         tradermade_symbol: formData.tradermade_symbol,
@@ -515,7 +517,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         tp4: takeProfits[3] && takeProfits[3].trim() ? parseFloat(takeProfits[3]) : undefined,
         tp5: takeProfits[4] && takeProfits[4].trim() ? parseFloat(takeProfits[4]) : undefined,
         notes: formData.notes || undefined,
-        status: 'active'
+        status: isLimitOrder ? "pending" : "active",
       };
 
       await onSubmit(submissionData);
@@ -523,7 +525,10 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       console.error('Form submission error:', error);
       toast({
         title: "Submission Error",
-        description: "Failed to create signal. Please try again.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to create signal. Please try again.",
         variant: "destructive",
       });
     } finally {

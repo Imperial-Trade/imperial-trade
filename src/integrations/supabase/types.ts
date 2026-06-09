@@ -485,6 +485,72 @@ export type Database = {
         }
         Relationships: []
       }
+      broker_connections: {
+        Row: {
+          account_number: string | null
+          broker_name: string | null
+          broker_type: string
+          connection_status: string | null
+          created_at: string
+          credentials_hash: string | null
+          encrypted_login: string | null
+          encrypted_password: string | null
+          encrypted_server: string | null
+          id: string
+          is_active: boolean
+          is_syncing: boolean | null
+          last_error: string | null
+          last_ping: string | null
+          last_sync_at: string | null
+          sync_method: string | null
+          sync_priority: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_number?: string | null
+          broker_name?: string | null
+          broker_type: string
+          connection_status?: string | null
+          created_at?: string
+          credentials_hash?: string | null
+          encrypted_login?: string | null
+          encrypted_password?: string | null
+          encrypted_server?: string | null
+          id?: string
+          is_active?: boolean
+          is_syncing?: boolean | null
+          last_error?: string | null
+          last_ping?: string | null
+          last_sync_at?: string | null
+          sync_method?: string | null
+          sync_priority?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_number?: string | null
+          broker_name?: string | null
+          broker_type?: string
+          connection_status?: string | null
+          created_at?: string
+          credentials_hash?: string | null
+          encrypted_login?: string | null
+          encrypted_password?: string | null
+          encrypted_server?: string | null
+          id?: string
+          is_active?: boolean
+          is_syncing?: boolean | null
+          last_error?: string | null
+          last_ping?: string | null
+          last_sync_at?: string | null
+          sync_method?: string | null
+          sync_priority?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       cached_educator_profiles: {
         Row: {
           avatar_url: string | null
@@ -542,6 +608,54 @@ export type Database = {
           module_number?: number | null
           user_id?: string
           user_interaction?: string | null
+        }
+        Relationships: []
+      }
+      certificates: {
+        Row: {
+          certificate_data: Json | null
+          certificate_image_url: string | null
+          certificate_name: string
+          certificate_pdf_url: string | null
+          certificate_type: string
+          completion_date: string
+          created_at: string
+          id: string
+          is_verified: boolean | null
+          module_number: number | null
+          pathway_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          certificate_data?: Json | null
+          certificate_image_url?: string | null
+          certificate_name: string
+          certificate_pdf_url?: string | null
+          certificate_type: string
+          completion_date?: string
+          created_at?: string
+          id?: string
+          is_verified?: boolean | null
+          module_number?: number | null
+          pathway_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          certificate_data?: Json | null
+          certificate_image_url?: string | null
+          certificate_name?: string
+          certificate_pdf_url?: string | null
+          certificate_type?: string
+          completion_date?: string
+          created_at?: string
+          id?: string
+          is_verified?: boolean | null
+          module_number?: number | null
+          pathway_id?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -604,6 +718,48 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "forum_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comment_reactions: {
+        Row: {
+          comment_id: string
+          created_at: string
+          id: string
+          reaction_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          id?: string
+          reaction_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          id?: string
+          reaction_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_reactions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "video_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -748,6 +904,47 @@ export type Database = {
         }
         Relationships: []
       }
+      deconstructor_analyses: {
+        Row: {
+          analysis_result: Json
+          created_at: string | null
+          id: string
+          journal_entry_id: string | null
+          photo_url: string
+          photo_urls: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          analysis_result: Json
+          created_at?: string | null
+          id?: string
+          journal_entry_id?: string | null
+          photo_url: string
+          photo_urls?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          analysis_result?: Json
+          created_at?: string | null
+          id?: string
+          journal_entry_id?: string | null
+          photo_url?: string
+          photo_urls?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deconstructor_analyses_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "trade_journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_subscriptions: {
         Row: {
           browser_name: string | null
@@ -756,6 +953,7 @@ export type Database = {
           device_capabilities: Json | null
           device_fingerprint: string
           device_info: Json | null
+          device_name: string | null
           id: string
           is_active: boolean | null
           is_mobile: boolean | null
@@ -774,6 +972,7 @@ export type Database = {
           device_capabilities?: Json | null
           device_fingerprint: string
           device_info?: Json | null
+          device_name?: string | null
           id?: string
           is_active?: boolean | null
           is_mobile?: boolean | null
@@ -792,6 +991,7 @@ export type Database = {
           device_capabilities?: Json | null
           device_fingerprint?: string
           device_info?: Json | null
+          device_name?: string | null
           id?: string
           is_active?: boolean | null
           is_mobile?: boolean | null
@@ -1058,6 +1258,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      insight_xx_analyses: {
+        Row: {
+          analysis_result: Json
+          created_at: string | null
+          current_price: number
+          id: string
+          symbol: string
+          timeframe: string
+          trading_style: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          analysis_result: Json
+          created_at?: string | null
+          current_price: number
+          id?: string
+          symbol: string
+          timeframe: string
+          trading_style: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          analysis_result?: Json
+          created_at?: string | null
+          current_price?: number
+          id?: string
+          symbol?: string
+          timeframe?: string
+          trading_style?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       learning_pathways: {
         Row: {
@@ -2124,6 +2360,7 @@ export type Database = {
           legal_version: string | null
           location: string | null
           module_completion_messages: Json | null
+          monthly_goal: number | null
           notification_preferences: Json | null
           notification_prompt_dismissed_at: string | null
           notification_stats: Json | null
@@ -2179,6 +2416,7 @@ export type Database = {
           legal_version?: string | null
           location?: string | null
           module_completion_messages?: Json | null
+          monthly_goal?: number | null
           notification_preferences?: Json | null
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
@@ -2234,6 +2472,7 @@ export type Database = {
           legal_version?: string | null
           location?: string | null
           module_completion_messages?: Json | null
+          monthly_goal?: number | null
           notification_preferences?: Json | null
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
@@ -2255,6 +2494,86 @@ export type Database = {
           xeon_stream_subscription?: boolean | null
         }
         Relationships: []
+      }
+      progress_milestones: {
+        Row: {
+          achieved_date: string
+          badge_icon: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          milestone_name: string
+          milestone_type: string
+          milestone_value: number | null
+          user_id: string
+        }
+        Insert: {
+          achieved_date?: string
+          badge_icon?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          milestone_name: string
+          milestone_type: string
+          milestone_value?: number | null
+          user_id: string
+        }
+        Update: {
+          achieved_date?: string
+          badge_icon?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          milestone_name?: string
+          milestone_type?: string
+          milestone_value?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      provider_payouts: {
+        Row: {
+          balance_cents: number
+          charges_enabled: boolean
+          details_submitted: boolean
+          last_payout_at: string | null
+          payouts_enabled: boolean
+          provider_id: string
+          stripe_account_id: string | null
+          stripe_account_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          balance_cents?: number
+          charges_enabled?: boolean
+          details_submitted?: boolean
+          last_payout_at?: string | null
+          payouts_enabled?: boolean
+          provider_id: string
+          stripe_account_id?: string | null
+          stripe_account_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          balance_cents?: number
+          charges_enabled?: boolean
+          details_submitted?: boolean
+          last_payout_at?: string | null
+          payouts_enabled?: boolean
+          provider_id?: string
+          stripe_account_id?: string | null
+          stripe_account_status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_payouts_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       psychology_logs: {
         Row: {
@@ -2601,6 +2920,7 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           id: string
+          image_urls: string[]
           likes: number
           parent_id: string | null
           post_id: string
@@ -2613,6 +2933,7 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           id?: string
+          image_urls?: string[]
           likes?: number
           parent_id?: string | null
           post_id: string
@@ -2625,6 +2946,7 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           id?: string
+          image_urls?: string[]
           likes?: number
           parent_id?: string | null
           post_id?: string
@@ -2644,6 +2966,35 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "forum_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reply_likes: {
+        Row: {
+          created_at: string
+          id: string
+          reply_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reply_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reply_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reply_likes_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "replies"
             referencedColumns: ["id"]
           },
         ]
@@ -2734,6 +3085,1079 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      room_asset_requests: {
+        Row: {
+          asset: string
+          assigned_to: string | null
+          created_at: string
+          id: string
+          internal_notes: string | null
+          note: string | null
+          requested_by: string
+          resolved_at: string | null
+          resolved_by: string | null
+          resolved_signal_id: string | null
+          room_id: string
+          status: Database["public"]["Enums"]["room_asset_request_status"]
+        }
+        Insert: {
+          asset: string
+          assigned_to?: string | null
+          created_at?: string
+          id?: string
+          internal_notes?: string | null
+          note?: string | null
+          requested_by: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_signal_id?: string | null
+          room_id: string
+          status?: Database["public"]["Enums"]["room_asset_request_status"]
+        }
+        Update: {
+          asset?: string
+          assigned_to?: string | null
+          created_at?: string
+          id?: string
+          internal_notes?: string | null
+          note?: string | null
+          requested_by?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_signal_id?: string | null
+          room_id?: string
+          status?: Database["public"]["Enums"]["room_asset_request_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_asset_requests_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_asset_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_asset_requests_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_asset_requests_resolved_signal_id_fkey"
+            columns: ["resolved_signal_id"]
+            isOneToOne: false
+            referencedRelation: "room_signals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_asset_requests_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_stats"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_asset_requests_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_audit_events: {
+        Row: {
+          actor_id: string | null
+          category: Database["public"]["Enums"]["room_audit_category"]
+          created_at: string
+          id: string
+          payload: Json
+          room_id: string
+          summary: string
+        }
+        Insert: {
+          actor_id?: string | null
+          category: Database["public"]["Enums"]["room_audit_category"]
+          created_at?: string
+          id?: string
+          payload?: Json
+          room_id: string
+          summary: string
+        }
+        Update: {
+          actor_id?: string | null
+          category?: Database["public"]["Enums"]["room_audit_category"]
+          created_at?: string
+          id?: string
+          payload?: Json
+          room_id?: string
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_audit_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_audit_events_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_stats"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_audit_events_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          room_id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          room_id: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_blocks_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_stats"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_blocks_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_invites: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          max_uses: number | null
+          revoked_at: string | null
+          room_id: string
+          short_code: string | null
+          token: string
+          type: Database["public"]["Enums"]["room_invite_type"]
+          used_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          revoked_at?: string | null
+          room_id: string
+          short_code?: string | null
+          token: string
+          type: Database["public"]["Enums"]["room_invite_type"]
+          used_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          revoked_at?: string | null
+          room_id?: string
+          short_code?: string | null
+          token?: string
+          type?: Database["public"]["Enums"]["room_invite_type"]
+          used_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_invites_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_stats"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_invites_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_members: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          ban_reason: string | null
+          invite_self_referral: string | null
+          invited_by: string | null
+          invited_via: Database["public"]["Enums"]["room_invite_type"] | null
+          joined_at: string
+          last_read_message_id: string | null
+          mute_until: string | null
+          role: Database["public"]["Enums"]["room_role"]
+          room_id: string
+          rules_accepted_at: string | null
+          status: Database["public"]["Enums"]["room_member_status"]
+          timeout_until: string | null
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          ban_reason?: string | null
+          invite_self_referral?: string | null
+          invited_by?: string | null
+          invited_via?: Database["public"]["Enums"]["room_invite_type"] | null
+          joined_at?: string
+          last_read_message_id?: string | null
+          mute_until?: string | null
+          role?: Database["public"]["Enums"]["room_role"]
+          room_id: string
+          rules_accepted_at?: string | null
+          status?: Database["public"]["Enums"]["room_member_status"]
+          timeout_until?: string | null
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          ban_reason?: string | null
+          invite_self_referral?: string | null
+          invited_by?: string | null
+          invited_via?: Database["public"]["Enums"]["room_invite_type"] | null
+          joined_at?: string
+          last_read_message_id?: string | null
+          mute_until?: string | null
+          role?: Database["public"]["Enums"]["room_role"]
+          room_id?: string
+          rules_accepted_at?: string | null
+          status?: Database["public"]["Enums"]["room_member_status"]
+          timeout_until?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_members_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_members_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_members_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_stats"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_members_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_message_delivery: {
+        Row: {
+          message_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          message_id: string
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          message_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_message_delivery_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "room_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_message_delivery_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "room_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_message_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_messages: {
+        Row: {
+          audit_event_id: string | null
+          content: Json
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          deleted_for:
+            | Database["public"]["Enums"]["room_message_delete_scope"]
+            | null
+          edited_at: string | null
+          id: string
+          parent_message_id: string | null
+          room_id: string
+          signal_id: string | null
+          type: Database["public"]["Enums"]["room_message_type"]
+          user_id: string | null
+        }
+        Insert: {
+          audit_event_id?: string | null
+          content?: Json
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deleted_for?:
+            | Database["public"]["Enums"]["room_message_delete_scope"]
+            | null
+          edited_at?: string | null
+          id?: string
+          parent_message_id?: string | null
+          room_id: string
+          signal_id?: string | null
+          type?: Database["public"]["Enums"]["room_message_type"]
+          user_id?: string | null
+        }
+        Update: {
+          audit_event_id?: string | null
+          content?: Json
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deleted_for?:
+            | Database["public"]["Enums"]["room_message_delete_scope"]
+            | null
+          edited_at?: string | null
+          id?: string
+          parent_message_id?: string | null
+          room_id?: string
+          signal_id?: string | null
+          type?: Database["public"]["Enums"]["room_message_type"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_messages_audit_event_id_fkey"
+            columns: ["audit_event_id"]
+            isOneToOne: false
+            referencedRelation: "room_audit_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_messages_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_messages_parent_message_id_fkey"
+            columns: ["parent_message_id"]
+            isOneToOne: false
+            referencedRelation: "room_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_stats"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_notification_prefs: {
+        Row: {
+          chat: boolean
+          mentions: boolean
+          room_id: string
+          signals: boolean
+          sl: boolean
+          tp: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chat?: boolean
+          mentions?: boolean
+          room_id: string
+          signals?: boolean
+          sl?: boolean
+          tp?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chat?: boolean
+          mentions?: boolean
+          room_id?: string
+          signals?: boolean
+          sl?: boolean
+          tp?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_notification_prefs_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_stats"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_notification_prefs_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_notification_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_pricing: {
+        Row: {
+          currency: string
+          discount_percent: number | null
+          monthly_price_cents: number | null
+          monthly_stripe_price_id: string | null
+          quarterly_price_cents: number | null
+          quarterly_stripe_price_id: string | null
+          room_id: string
+          updated_at: string
+          yearly_price_cents: number | null
+          yearly_stripe_price_id: string | null
+        }
+        Insert: {
+          currency?: string
+          discount_percent?: number | null
+          monthly_price_cents?: number | null
+          monthly_stripe_price_id?: string | null
+          quarterly_price_cents?: number | null
+          quarterly_stripe_price_id?: string | null
+          room_id: string
+          updated_at?: string
+          yearly_price_cents?: number | null
+          yearly_stripe_price_id?: string | null
+        }
+        Update: {
+          currency?: string
+          discount_percent?: number | null
+          monthly_price_cents?: number | null
+          monthly_stripe_price_id?: string | null
+          quarterly_price_cents?: number | null
+          quarterly_stripe_price_id?: string | null
+          room_id?: string
+          updated_at?: string
+          yearly_price_cents?: number | null
+          yearly_stripe_price_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_pricing_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: true
+            referencedRelation: "room_stats"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_pricing_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: true
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_reports: {
+        Row: {
+          created_at: string
+          id: string
+          reason: string
+          reporter_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          room_id: string
+          status: string
+          target_message_id: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reason: string
+          reporter_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          room_id: string
+          status?: string
+          target_message_id?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reason?: string
+          reporter_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          room_id?: string
+          status?: string
+          target_message_id?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_reports_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_stats"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_reports_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_reports_target_message_id_fkey"
+            columns: ["target_message_id"]
+            isOneToOne: false
+            referencedRelation: "room_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_reports_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_rules: {
+        Row: {
+          content: string
+          room_id: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          content?: string
+          room_id: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          content?: string
+          room_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_rules_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: true
+            referencedRelation: "room_stats"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_rules_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: true
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_rules_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_security_audit: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event: string
+          id: string
+          payload: Json
+          room_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event: string
+          id?: string
+          payload?: Json
+          room_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event?: string
+          id?: string
+          payload?: Json
+          room_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_security_audit_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_security_audit_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_stats"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_security_audit_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_signal_links: {
+        Row: {
+          created_at: string
+          room_id: string
+          signal_id: string
+        }
+        Insert: {
+          created_at?: string
+          room_id: string
+          signal_id: string
+        }
+        Update: {
+          created_at?: string
+          room_id?: string
+          signal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_signal_links_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_stats"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_signal_links_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_signal_links_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "room_signals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_signal_updates: {
+        Row: {
+          created_at: string
+          id: string
+          signal_id: string
+          type: Database["public"]["Enums"]["room_signal_update_type"]
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          signal_id: string
+          type: Database["public"]["Enums"]["room_signal_update_type"]
+          value?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          signal_id?: string
+          type?: Database["public"]["Enums"]["room_signal_update_type"]
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_signal_updates_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "room_signals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_signals: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          entry: number
+          id: string
+          notes: string | null
+          pips: number
+          provider_id: string
+          room_id: string
+          side: string
+          sl: number | null
+          source: Database["public"]["Enums"]["room_signal_source"]
+          status: Database["public"]["Enums"]["room_signal_status"]
+          symbol: string
+          tps: Json
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          entry: number
+          id?: string
+          notes?: string | null
+          pips?: number
+          provider_id: string
+          room_id: string
+          side: string
+          sl?: number | null
+          source?: Database["public"]["Enums"]["room_signal_source"]
+          status?: Database["public"]["Enums"]["room_signal_status"]
+          symbol: string
+          tps?: Json
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          entry?: number
+          id?: string
+          notes?: string | null
+          pips?: number
+          provider_id?: string
+          room_id?: string
+          side?: string
+          sl?: number | null
+          source?: Database["public"]["Enums"]["room_signal_source"]
+          status?: Database["public"]["Enums"]["room_signal_status"]
+          symbol?: string
+          tps?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_signals_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_signals_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_stats"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_signals_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_subscriptions: {
+        Row: {
+          canceled_at: string | null
+          created_at: string
+          current_period_end: string | null
+          grace_until: string | null
+          id: string
+          plan: Database["public"]["Enums"]["room_subscription_plan"] | null
+          room_id: string
+          status: Database["public"]["Enums"]["room_subscription_status"]
+          stripe_customer_id: string | null
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
+          user_id: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          grace_until?: string | null
+          id?: string
+          plan?: Database["public"]["Enums"]["room_subscription_plan"] | null
+          room_id: string
+          status?: Database["public"]["Enums"]["room_subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          user_id: string
+        }
+        Update: {
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          grace_until?: string | null
+          id?: string
+          plan?: Database["public"]["Enums"]["room_subscription_plan"] | null
+          room_id?: string
+          status?: Database["public"]["Enums"]["room_subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_subscriptions_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_stats"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "room_subscriptions_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          avatar_url: string | null
+          background_config: Json
+          capacity: number
+          code: string | null
+          created_at: string
+          description: string | null
+          id: string
+          monetization: string
+          name: string
+          owner_id: string
+          plan_tier: string
+          slug: string
+          type: Database["public"]["Enums"]["room_type"]
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          background_config?: Json
+          capacity?: number
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          monetization?: string
+          name: string
+          owner_id: string
+          plan_tier?: string
+          slug: string
+          type?: Database["public"]["Enums"]["room_type"]
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          background_config?: Json
+          capacity?: number
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          monetization?: string
+          name?: string
+          owner_id?: string
+          plan_tier?: string
+          slug?: string
+          type?: Database["public"]["Enums"]["room_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       screenshot_analysis_history: {
         Row: {
@@ -2902,6 +4326,7 @@ export type Database = {
           activation_price: number | null
           asset_name: string
           close_reason: Database["public"]["Enums"]["close_reason"] | null
+          closing_price: number | null
           created_at: string
           entry_price: number
           expires_at: string | null
@@ -2929,6 +4354,7 @@ export type Database = {
           activation_price?: number | null
           asset_name: string
           close_reason?: Database["public"]["Enums"]["close_reason"] | null
+          closing_price?: number | null
           created_at?: string
           entry_price: number
           expires_at?: string | null
@@ -2956,6 +4382,7 @@ export type Database = {
           activation_price?: number | null
           asset_name?: string
           close_reason?: Database["public"]["Enums"]["close_reason"] | null
+          closing_price?: number | null
           created_at?: string
           entry_price?: number
           expires_at?: string | null
@@ -3017,15 +4444,35 @@ export type Database = {
         Row: {
           ai_positive_feedback: string | null
           asset_ticker: string
+          broker_connection_id: string | null
+          broker_trade_id: string | null
+          commission: number | null
           created_at: string
+          emotion: string | null
           entry_price: number | null
+          entry_time: string | null
           exit_price: number | null
+          exit_time: string | null
+          followed_plan: boolean | null
           id: string
+          is_synced: boolean | null
           notes: string | null
+          planned_stop_loss: number | null
+          planned_target_price: number | null
           pnl: number
+          pnl_percent: number | null
           position_size: number | null
+          processing_status: string | null
+          revenge_trade: boolean | null
           screenshot_url: string | null
           screenshot_urls: string[] | null
+          session: string | null
+          stop_loss: number | null
+          strategy: string | null
+          swap_fees: number | null
+          sync_source: string | null
+          take_profit: number | null
+          target_hit_by_market: boolean | null
           trade_date: string
           trade_type: Database["public"]["Enums"]["trade_type"] | null
           updated_at: string
@@ -3034,15 +4481,35 @@ export type Database = {
         Insert: {
           ai_positive_feedback?: string | null
           asset_ticker: string
+          broker_connection_id?: string | null
+          broker_trade_id?: string | null
+          commission?: number | null
           created_at?: string
+          emotion?: string | null
           entry_price?: number | null
+          entry_time?: string | null
           exit_price?: number | null
+          exit_time?: string | null
+          followed_plan?: boolean | null
           id?: string
+          is_synced?: boolean | null
           notes?: string | null
+          planned_stop_loss?: number | null
+          planned_target_price?: number | null
           pnl: number
+          pnl_percent?: number | null
           position_size?: number | null
+          processing_status?: string | null
+          revenge_trade?: boolean | null
           screenshot_url?: string | null
           screenshot_urls?: string[] | null
+          session?: string | null
+          stop_loss?: number | null
+          strategy?: string | null
+          swap_fees?: number | null
+          sync_source?: string | null
+          take_profit?: number | null
+          target_hit_by_market?: boolean | null
           trade_date: string
           trade_type?: Database["public"]["Enums"]["trade_type"] | null
           updated_at?: string
@@ -3051,27 +4518,62 @@ export type Database = {
         Update: {
           ai_positive_feedback?: string | null
           asset_ticker?: string
+          broker_connection_id?: string | null
+          broker_trade_id?: string | null
+          commission?: number | null
           created_at?: string
+          emotion?: string | null
           entry_price?: number | null
+          entry_time?: string | null
           exit_price?: number | null
+          exit_time?: string | null
+          followed_plan?: boolean | null
           id?: string
+          is_synced?: boolean | null
           notes?: string | null
+          planned_stop_loss?: number | null
+          planned_target_price?: number | null
           pnl?: number
+          pnl_percent?: number | null
           position_size?: number | null
+          processing_status?: string | null
+          revenge_trade?: boolean | null
           screenshot_url?: string | null
           screenshot_urls?: string[] | null
+          session?: string | null
+          stop_loss?: number | null
+          strategy?: string | null
+          swap_fees?: number | null
+          sync_source?: string | null
+          take_profit?: number | null
+          target_hit_by_market?: boolean | null
           trade_date?: string
           trade_type?: Database["public"]["Enums"]["trade_type"] | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "trade_journal_entries_broker_connection_id_fkey"
+            columns: ["broker_connection_id"]
+            isOneToOne: false
+            referencedRelation: "broker_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trade_journal_entries_broker_connection_id_fkey"
+            columns: ["broker_connection_id"]
+            isOneToOne: false
+            referencedRelation: "next_sync_task"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trades: {
         Row: {
           created_at: string
           direction: string
-          duration: unknown
+          duration: string | null
           entry_date: string
           entry_price: number
           exit_date: string | null
@@ -3088,7 +4590,7 @@ export type Database = {
         Insert: {
           created_at?: string
           direction: string
-          duration?: unknown
+          duration?: string | null
           entry_date: string
           entry_price: number
           exit_date?: string | null
@@ -3105,7 +4607,7 @@ export type Database = {
         Update: {
           created_at?: string
           direction?: string
-          duration?: unknown
+          duration?: string | null
           entry_date?: string
           entry_price?: number
           exit_date?: string | null
@@ -4284,9 +5786,51 @@ export type Database = {
           },
         ]
       }
+      next_sync_task: {
+        Row: {
+          account_number: string | null
+          broker_name: string | null
+          broker_type: string | null
+          connection_status: string | null
+          created_at: string | null
+          credentials_hash: string | null
+          encrypted_login: string | null
+          encrypted_password: string | null
+          encrypted_server: string | null
+          id: string | null
+          is_active: boolean | null
+          is_syncing: boolean | null
+          last_error: string | null
+          last_ping: string | null
+          last_sync_at: string | null
+          sync_method: string | null
+          sync_priority: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      room_stats: {
+        Row: {
+          active_members: number | null
+          capacity: number | null
+          last_signal_at: string | null
+          losses: number | null
+          monetization: string | null
+          name: string | null
+          pips_gained: number | null
+          pips_lost: number | null
+          room_id: string | null
+          total_signals: number | null
+          type: Database["public"]["Enums"]["room_type"] | null
+          win_rate: number | null
+          wins: number | null
+        }
+        Relationships: []
+      }
       v_pending_signals_with_tp_hits: {
         Row: {
-          age: unknown
+          age: string | null
           alert_message: string | null
           asset_name: string | null
           created_at: string | null
@@ -4349,7 +5893,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_delete_user: { Args: { p_user_id: string }; Returns: Json }
       auto_cleanup_stale_sessions: { Args: never; Returns: undefined }
+      calculate_consistency_score: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
+      calculate_learning_streak: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
       calculate_trading_metrics: {
         Args: {
           p_entry_price: number
@@ -4358,6 +5911,10 @@ export type Database = {
           p_trade_type?: string
         }
         Returns: Json
+      }
+      can_post_signal: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: boolean
       }
       check_account_request_rate_limit:
         | { Args: { p_email: string }; Returns: boolean }
@@ -4410,24 +5967,16 @@ export type Database = {
       cleanup_trigger_execution_logs: { Args: never; Returns: undefined }
       cleanup_trigger_notification_dedup: { Args: never; Returns: undefined }
       cleanup_webhook_debounce: { Args: never; Returns: undefined }
-      close_trade_alert:
-        | {
-            Args: {
-              p_alert_id: string
-              p_close_reason?: string
-              p_notes?: string
-              p_user_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_alert_id: string
-              p_close_reason?: string
-              p_user_id: string
-            }
-            Returns: Json
-          }
+      close_trade_alert: {
+        Args: {
+          p_alert_id: string
+          p_close_reason?: string
+          p_closing_price?: number
+          p_notes?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       create_smart_notification_batch: {
         Args: {
           p_asset_symbol?: string
@@ -4452,6 +6001,8 @@ export type Database = {
       disable_economic_events_processing: { Args: never; Returns: undefined }
       enable_course_module_webhook: { Args: never; Returns: string }
       expire_limit_orders: { Args: never; Returns: undefined }
+      generate_invite_token: { Args: never; Returns: string }
+      generate_room_code: { Args: never; Returns: string }
       get_active_alert_symbols: {
         Args: never
         Returns: {
@@ -4544,6 +6095,22 @@ export type Database = {
       get_user_notifications:
         | {
             Args: {
+              p_cursor_created_at?: string
+              p_cursor_event_id?: string
+              p_limit?: number
+            }
+            Returns: {
+              actor_id: string
+              created_at: string
+              event_id: string
+              event_type: string
+              post_id: string
+              post_title: string
+              unread: boolean
+            }[]
+          }
+        | {
+            Args: {
               p_limit?: number
               p_unread_only?: boolean
               p_user_id?: string
@@ -4562,22 +6129,7 @@ export type Database = {
               title: string
             }[]
           }
-        | {
-            Args: {
-              p_cursor_created_at?: string
-              p_cursor_event_id?: string
-              p_limit?: number
-            }
-            Returns: {
-              actor_id: string
-              created_at: string
-              event_id: string
-              event_type: string
-              post_id: string
-              post_title: string
-              unread: boolean
-            }[]
-          }
+      get_user_progress_metrics: { Args: { p_user_id: string }; Returns: Json }
       get_user_role: { Args: { user_id_param?: string }; Returns: string }
       get_user_roles: {
         Args: { p_user_id?: string }
@@ -4654,6 +6206,26 @@ export type Database = {
         Args: { user_id_param?: string }
         Returns: boolean
       }
+      is_room_active_member: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_room_member_any: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_room_owner: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_room_pending: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_room_staff: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_system_operation: { Args: never; Returns: boolean }
       log_deprecated_function_usage:
         | { Args: never; Returns: undefined }
@@ -4671,6 +6243,10 @@ export type Database = {
         Returns: number
       }
       observe_deprecated_function_usage: { Args: never; Returns: undefined }
+      pending_message_horizon: {
+        Args: { _limit?: number; _room_id: string; _user_id: string }
+        Returns: string
+      }
       populate_alert_monitoring_for_existing_signals: {
         Args: never
         Returns: undefined
@@ -4746,6 +6322,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      room_user_role: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: Database["public"]["Enums"]["room_role"]
+      }
       send_notification: {
         Args: {
           p_edge_function_url: string
@@ -4770,7 +6350,6 @@ export type Database = {
         Returns: boolean
       }
       system_update_trade_alert:
-        | { Args: { p_signal_id: string; p_updates: Json }; Returns: undefined }
         | {
             Args: {
               p_close_reason?: string
@@ -4780,6 +6359,7 @@ export type Database = {
             }
             Returns: boolean
           }
+        | { Args: { p_signal_id: string; p_updates: Json }; Returns: undefined }
       update_educator_profile_cache_direct: {
         Args: { p_user_id: string }
         Returns: undefined
@@ -4799,6 +6379,7 @@ export type Database = {
           activation_price: number | null
           asset_name: string
           close_reason: Database["public"]["Enums"]["close_reason"] | null
+          closing_price: number | null
           created_at: string
           entry_price: number
           expires_at: string | null
@@ -4860,7 +6441,7 @@ export type Database = {
           p_bid: number
           p_mid: number
           p_symbol: string
-          p_timestamp?: string
+          p_timestamp: string
         }
         Returns: undefined
       }
@@ -4895,6 +6476,7 @@ export type Database = {
       alert_status: "active" | "triggered"
       app_role: "admin" | "moderator" | "user" | "educator" | "educator+"
       asset_type: "Stock" | "Crypto" | "Forex" | "Commodity"
+      broker_type: "XS" | "EC_MARKETS" | "PU_PRIME"
       close_reason:
         | "manual"
         | "stop_loss"
@@ -4925,6 +6507,52 @@ export type Database = {
         | "admin_created"
         | "invitation"
       request_status: "pending" | "approved" | "rejected"
+      room_asset_request_status:
+        | "requested"
+        | "in_progress"
+        | "approved"
+        | "denied"
+        | "done"
+      room_audit_category:
+        | "name"
+        | "description"
+        | "avatar"
+        | "rules"
+        | "invite"
+        | "plan"
+        | "background"
+        | "member"
+        | "role"
+        | "monetization"
+        | "notifications"
+        | "capacity"
+      room_invite_type: "link" | "code" | "qr"
+      room_member_status:
+        | "pending"
+        | "active"
+        | "muted"
+        | "timed_out"
+        | "banned"
+      room_message_delete_scope: "self" | "all"
+      room_message_type: "text" | "media" | "signal" | "system"
+      room_role: "owner" | "admin" | "provider" | "member"
+      room_signal_source: "manual" | "engine"
+      room_signal_status:
+        | "pending"
+        | "active"
+        | "closed_win"
+        | "closed_loss"
+        | "canceled"
+      room_signal_update_type: "tp_hit" | "sl_hit" | "edit" | "cancel" | "note"
+      room_subscription_plan: "monthly" | "quarterly" | "yearly"
+      room_subscription_status:
+        | "active"
+        | "trialing"
+        | "past_due"
+        | "canceled"
+        | "gifted"
+        | "paused"
+      room_type: "public" | "private"
       session_status: "scheduled" | "live" | "completed"
       signal_status: "active" | "expired" | "triggered"
       signal_type: "breakout" | "reversal" | "news_event" | "pattern"
@@ -5079,6 +6707,7 @@ export const Constants = {
       alert_status: ["active", "triggered"],
       app_role: ["admin", "moderator", "user", "educator", "educator+"],
       asset_type: ["Stock", "Crypto", "Forex", "Commodity"],
+      broker_type: ["XS", "EC_MARKETS", "PU_PRIME"],
       close_reason: [
         "manual",
         "stop_loss",
@@ -5106,6 +6735,51 @@ export const Constants = {
         "invitation",
       ],
       request_status: ["pending", "approved", "rejected"],
+      room_asset_request_status: [
+        "requested",
+        "in_progress",
+        "approved",
+        "denied",
+        "done",
+      ],
+      room_audit_category: [
+        "name",
+        "description",
+        "avatar",
+        "rules",
+        "invite",
+        "plan",
+        "background",
+        "member",
+        "role",
+        "monetization",
+        "notifications",
+        "capacity",
+      ],
+      room_invite_type: ["link", "code", "qr"],
+      room_member_status: ["pending", "active", "muted", "timed_out", "banned"],
+      room_message_delete_scope: ["self", "all"],
+      room_message_type: ["text", "media", "signal", "system"],
+      room_role: ["owner", "admin", "provider", "member"],
+      room_signal_source: ["manual", "engine"],
+      room_signal_status: [
+        "pending",
+        "active",
+        "closed_win",
+        "closed_loss",
+        "canceled",
+      ],
+      room_signal_update_type: ["tp_hit", "sl_hit", "edit", "cancel", "note"],
+      room_subscription_plan: ["monthly", "quarterly", "yearly"],
+      room_subscription_status: [
+        "active",
+        "trialing",
+        "past_due",
+        "canceled",
+        "gifted",
+        "paused",
+      ],
+      room_type: ["public", "private"],
       session_status: ["scheduled", "live", "completed"],
       signal_status: ["active", "expired", "triggered"],
       signal_type: ["breakout", "reversal", "news_event", "pattern"],

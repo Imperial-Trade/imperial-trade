@@ -1,0 +1,1469 @@
+/* ================================================================
+ * Pattern Stream Rooms - Design Tokens
+ * ----------------------------------------------------------------
+ * Liquid Glass + Glassmorphism (CSS-only, no SVG filters in v1)
+ * Dark primary, Light opt-in. Monochrome + Green only (no Sky Blue).
+ * Scoped to elements/descendants under [data-ps-root].
+ * ================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap');
+
+/* -------- Theme variables -------- */
+
+[data-ps-root='dark'] {
+  --ps-canvas: #070707;
+  --ps-surface: #0e0e0e;
+  --ps-surface-elev: #161616;
+  --ps-surface-popover: #1c1c1c;
+
+  --ps-hairline: rgba(255, 255, 255, 0.05);
+  --ps-border-subtle: rgba(255, 255, 255, 0.08);
+  --ps-border-strong: rgba(255, 255, 255, 0.14);
+
+  --ps-text: #ffffff;
+  --ps-text-secondary: #c9c9c9;
+  --ps-text-tertiary: #8a8a8a;
+  --ps-text-disabled: #5a5a5a;
+
+  --ps-glass-bg: rgba(255, 255, 255, 0.05);
+  --ps-glass-bg-elev: rgba(255, 255, 255, 0.07);
+  --ps-glass-bg-active: rgba(255, 255, 255, 0.10);
+  --ps-glass-blur: 24px;
+  --ps-glass-saturate: 1.4;
+  --ps-glass-edge-top: rgba(255, 255, 255, 0.18);
+  --ps-glass-edge-bottom: rgba(0, 0, 0, 0.45);
+  --ps-glass-shadow-outer: 0 8px 32px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --ps-glass-inner-top: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  --ps-glass-inner-bottom: inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+  --ps-glass-sheen: radial-gradient(120% 60% at 50% -10%, rgba(255, 255, 255, 0.08), transparent 60%);
+
+  --ps-green: #22c55e;
+  --ps-green-hover: #34d27a;
+  --ps-green-active: #16a34a;
+  --ps-green-glow: 0 0 24px rgba(34, 197, 94, 0.25);
+  --ps-green-tint: rgba(34, 197, 94, 0.10);
+  --ps-yellow-green: #a4e635;
+  --ps-yellow-green-glow: 0 0 16px rgba(164, 230, 53, 0.45);
+  --ps-negative: #ff5c7a;
+  --ps-negative-tint: rgba(255, 92, 122, 0.12);
+  --ps-warning: #ffb547;
+
+  --ps-focus-ring: 0 0 0 3px rgba(34, 197, 94, 0.35);
+
+  /* -------- Insight Stitch tokens (dark) -------- */
+  --insight-gold: #c09a58;
+  --insight-gold-soft: rgba(192, 154, 88, 0.14);
+  --insight-gold-strong: #d2af6a;
+  --insight-canvas-bg: #0d0e12;
+  --insight-surface-bg: #0f1218;
+  --insight-glass-bg: rgba(20, 22, 28, 0.72);
+  --insight-glass-border: rgba(255, 255, 255, 0.06);
+  --insight-divider-pill-bg: rgba(255, 255, 255, 0.04);
+  --insight-divider-pill-border: rgba(255, 255, 255, 0.06);
+  --insight-divider-pill-fg: rgba(255, 255, 255, 0.5);
+  --insight-bubble-inbound-bg: rgba(255, 255, 255, 0.06);
+  --insight-bubble-inbound-fg: #f4f6f8;
+  --insight-bubble-inbound-border: rgba(255, 255, 255, 0.06);
+  --insight-chrome-gradient: linear-gradient(135deg, #3b82f6 0%, #9333ea 100%);
+  --insight-bubble-outbound-bg: var(--insight-chrome-gradient);
+  --insight-bubble-outbound-fg: #ffffff;
+  --insight-bubble-outbound-border: rgba(255, 255, 255, 0.12);
+  --insight-bubble-shadow: 0 4px 18px -6px rgba(0, 0, 0, 0.55);
+  --insight-reaction-pill-bg: rgba(20, 22, 28, 0.85);
+  --insight-reaction-pill-border: rgba(255, 255, 255, 0.08);
+  --insight-composer-bg: rgba(255, 255, 255, 0.04);
+  --insight-composer-border: rgba(255, 255, 255, 0.08);
+  --insight-composer-focus-bg: rgba(255, 255, 255, 0.08);
+  --insight-send-bg: #ffffff;
+  --insight-send-fg: #0f172a;
+  --insight-typing-bg: rgba(255, 255, 255, 0.06);
+  --insight-typing-border: rgba(255, 255, 255, 0.08);
+}
+
+[data-ps-root='light'] {
+  --ps-canvas: #f4f1ea;
+  --ps-surface: #ffffff;
+  --ps-surface-elev: #faf7f1;
+  --ps-surface-popover: #ffffff;
+
+  --ps-hairline: rgba(0, 0, 0, 0.05);
+  --ps-border-subtle: rgba(0, 0, 0, 0.08);
+  --ps-border-strong: rgba(0, 0, 0, 0.14);
+
+  --ps-text: #0a0a0a;
+  --ps-text-secondary: #3f3f46;
+  --ps-text-tertiary: #71717a;
+  --ps-text-disabled: #a1a1aa;
+
+  --ps-glass-bg: rgba(255, 255, 255, 0.65);
+  --ps-glass-bg-elev: rgba(255, 255, 255, 0.78);
+  --ps-glass-bg-active: rgba(255, 255, 255, 0.85);
+  --ps-glass-blur: 24px;
+  --ps-glass-saturate: 1.4;
+  --ps-glass-edge-top: rgba(255, 255, 255, 0.85);
+  --ps-glass-edge-bottom: rgba(0, 0, 0, 0.06);
+  --ps-glass-shadow-outer: 0 8px 24px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --ps-glass-inner-top: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --ps-glass-inner-bottom: inset 0 -1px 0 rgba(0, 0, 0, 0.06);
+  --ps-glass-sheen: radial-gradient(120% 60% at 50% -10%, rgba(255, 255, 255, 0.6), transparent 60%);
+
+  --ps-green: #22c55e;
+  --ps-green-hover: #34d27a;
+  --ps-green-active: #16a34a;
+  --ps-green-glow: 0 0 24px rgba(34, 197, 94, 0.18);
+  --ps-green-tint: rgba(34, 197, 94, 0.10);
+  --ps-yellow-green: #a4e635;
+  --ps-yellow-green-glow: 0 0 16px rgba(164, 230, 53, 0.45);
+  --ps-negative: #ff5c7a;
+  --ps-negative-tint: rgba(255, 92, 122, 0.12);
+  --ps-warning: #ffb547;
+
+  --ps-focus-ring: 0 0 0 3px rgba(34, 197, 94, 0.30);
+
+  /* -------- Insight Stitch tokens (light) -------- */
+  --insight-gold: #c09a58;
+  --insight-gold-soft: rgba(192, 154, 88, 0.10);
+  --insight-gold-strong: #a8823e;
+  --insight-canvas-bg: #f7f9fb;
+  --insight-surface-bg: #ffffff;
+  --insight-glass-bg: rgba(255, 255, 255, 0.72);
+  --insight-glass-border: rgba(15, 23, 42, 0.06);
+  --insight-divider-pill-bg: rgba(255, 255, 255, 0.6);
+  --insight-divider-pill-border: rgba(15, 23, 42, 0.08);
+  --insight-divider-pill-fg: rgba(69, 70, 77, 0.7);
+  --insight-bubble-inbound-bg: #ffffff;
+  --insight-bubble-inbound-fg: #191c1e;
+  --insight-bubble-inbound-border: rgba(226, 232, 240, 0.6);
+  --insight-chrome-gradient: linear-gradient(135deg, #3b82f6 0%, #9333ea 100%);
+  --insight-bubble-outbound-bg: var(--insight-chrome-gradient);
+  --insight-bubble-outbound-fg: #ffffff;
+  --insight-bubble-outbound-border: rgba(255, 255, 255, 0.14);
+  --insight-bubble-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.08);
+  --insight-reaction-pill-bg: #ffffff;
+  --insight-reaction-pill-border: rgba(226, 232, 240, 0.7);
+  --insight-composer-bg: #f0f2f5;
+  --insight-composer-border: transparent;
+  --insight-composer-focus-bg: #ffffff;
+  --insight-send-bg: #0f172a;
+  --insight-send-fg: #ffffff;
+  --insight-typing-bg: #ffffff;
+  --insight-typing-border: rgba(226, 232, 240, 0.5);
+}
+
+/* -------- Base body styling under root -------- */
+
+[data-ps-root] {
+  background-color: var(--ps-canvas);
+  color: var(--ps-text);
+  font-family: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tabular-nums for numerics */
+[data-ps-root] .ps-numeric {
+  font-variant-numeric: tabular-nums;
+  font-family: 'Geist Mono', 'Geist', ui-monospace, monospace;
+}
+
+/* -------- LIQUID GLASS UTILITY -------- */
+
+[data-ps-root] .liquid-glass,
+.liquid-glass {
+  position: relative;
+  background: var(--ps-glass-bg);
+  -webkit-backdrop-filter: blur(var(--ps-glass-blur)) saturate(var(--ps-glass-saturate));
+          backdrop-filter: blur(var(--ps-glass-blur)) saturate(var(--ps-glass-saturate));
+  border: 1px solid var(--ps-border-subtle);
+  border-radius: 20px;
+  box-shadow: var(--ps-glass-shadow-outer), var(--ps-glass-inner-top), var(--ps-glass-inner-bottom);
+  isolation: isolate;
+}
+
+/* Top edge light catch */
+.liquid-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    180deg,
+    var(--ps-glass-edge-top) 0%,
+    rgba(255, 255, 255, 0.04) 35%,
+    transparent 65%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Inner refraction sheen */
+.liquid-glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--ps-glass-sheen);
+  opacity: 0.6;
+  pointer-events: none;
+  transition: opacity 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 0;
+}
+
+.liquid-glass:hover::after {
+  opacity: 1;
+}
+
+.liquid-glass > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Header variant: remove top edge sheen that appears as a dash at page top */
+.ps-header-shell::before {
+  display: none;
+}
+
+/* Lift variant: stronger shadow, slight translate */
+.liquid-glass--lift {
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.45),
+    0 2px 4px rgba(0, 0, 0, 0.25),
+    var(--ps-glass-inner-top),
+    var(--ps-glass-inner-bottom);
+}
+
+/* Inset variant: for inputs and recessed surfaces */
+.liquid-glass--inset {
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.45),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Green variant: active state + send button + online */
+.liquid-glass--green {
+  border-color: var(--ps-green);
+  box-shadow:
+    var(--ps-green-glow),
+    var(--ps-glass-shadow-outer),
+    var(--ps-glass-inner-top),
+    var(--ps-glass-inner-bottom);
+}
+
+.liquid-glass--green::before {
+  background: linear-gradient(
+    180deg,
+    rgba(34, 197, 94, 0.45) 0%,
+    rgba(34, 197, 94, 0.10) 40%,
+    transparent 70%
+  );
+}
+
+/* Negative variant: destructive surfaces */
+.liquid-glass--negative {
+  border-color: rgba(255, 92, 122, 0.45);
+  box-shadow:
+    0 0 18px rgba(255, 92, 122, 0.20),
+    var(--ps-glass-shadow-outer),
+    var(--ps-glass-inner-top),
+    var(--ps-glass-inner-bottom);
+}
+
+/* Smaller corner variants */
+.liquid-glass--sm { border-radius: 12px; }
+.liquid-glass--md { border-radius: 16px; }
+.liquid-glass--xl { border-radius: 24px; }
+.liquid-glass--pill { border-radius: 9999px; }
+
+/* -------- Active nav pill (used for switch/tabs/sidebar) -------- */
+
+.ps-active-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  font-weight: 500;
+  color: var(--ps-text);
+  transition: color 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ps-active-pill[data-active='true'] {
+  background: var(--ps-glass-bg-active);
+  -webkit-backdrop-filter: blur(var(--ps-glass-blur)) saturate(var(--ps-glass-saturate));
+          backdrop-filter: blur(var(--ps-glass-blur)) saturate(var(--ps-glass-saturate));
+  border: 1px solid var(--ps-green);
+  box-shadow: var(--ps-green-glow), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: var(--ps-text);
+}
+
+.ps-active-pill[data-active='true']::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--ps-green);
+  box-shadow: 0 0 8px var(--ps-green);
+  flex-shrink: 0;
+}
+
+/* -------- Buttons (scoped) -------- */
+
+.ps-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 22px;
+  transition: transform 80ms cubic-bezier(0.16, 1, 0.3, 1), filter 220ms;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid transparent;
+}
+
+.ps-btn:active {
+  transform: scale(0.98);
+}
+
+.ps-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ps-focus-ring);
+}
+
+.ps-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.ps-btn-primary {
+  composes: liquid-glass liquid-glass--green from global;
+  color: var(--ps-text);
+}
+
+.ps-btn-primary {
+  background: var(--ps-glass-bg-elev);
+  border: 1px solid var(--ps-green);
+  color: var(--ps-text);
+  box-shadow: var(--ps-green-glow), var(--ps-glass-inner-top), var(--ps-glass-inner-bottom);
+}
+
+.ps-btn-primary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 32px rgba(34, 197, 94, 0.40), var(--ps-glass-inner-top), var(--ps-glass-inner-bottom);
+}
+
+.ps-btn-secondary {
+  background: var(--ps-glass-bg);
+  -webkit-backdrop-filter: blur(var(--ps-glass-blur));
+          backdrop-filter: blur(var(--ps-glass-blur));
+  border: 1px solid var(--ps-border-subtle);
+  color: var(--ps-text);
+}
+
+.ps-btn-secondary:hover {
+  background: var(--ps-glass-bg-elev);
+  border-color: var(--ps-border-strong);
+}
+
+.ps-btn-destructive {
+  background: var(--ps-negative-tint);
+  border: 1px solid rgba(255, 92, 122, 0.45);
+  color: var(--ps-negative);
+}
+
+.ps-btn-destructive:hover {
+  background: var(--ps-negative);
+  color: #ffffff;
+}
+
+.ps-btn-ghost {
+  background: transparent;
+  color: var(--ps-text-secondary);
+}
+
+.ps-btn-ghost:hover {
+  color: var(--ps-text);
+  background: var(--ps-glass-bg);
+}
+
+.ps-btn-sm {
+  height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+  border-radius: 10px;
+}
+
+.ps-btn-icon {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 12px;
+}
+
+/* -------- Inputs -------- */
+
+.ps-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--ps-glass-bg);
+  -webkit-backdrop-filter: blur(var(--ps-glass-blur));
+          backdrop-filter: blur(var(--ps-glass-blur));
+  border: 1px solid var(--ps-border-subtle);
+  color: var(--ps-text);
+  font-size: 15px;
+  font-family: inherit;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: border-color 180ms, box-shadow 180ms;
+}
+
+.ps-input::placeholder {
+  color: var(--ps-text-tertiary);
+}
+
+.ps-input:focus {
+  outline: none;
+  border-color: var(--ps-green);
+  box-shadow: var(--ps-focus-ring), inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* -------- Chips / Badges -------- */
+
+.ps-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 9999px;
+  background: var(--ps-glass-bg);
+  -webkit-backdrop-filter: blur(var(--ps-glass-blur));
+          backdrop-filter: blur(var(--ps-glass-blur));
+  border: 1px solid var(--ps-border-subtle);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ps-text-secondary);
+  white-space: nowrap;
+}
+
+.ps-chip-green {
+  border-color: rgba(34, 197, 94, 0.35);
+  color: var(--ps-green);
+}
+
+.ps-chip-yellow-green {
+  border-color: rgba(164, 230, 53, 0.40);
+  color: var(--ps-yellow-green);
+}
+
+.ps-chip-warning {
+  border-color: rgba(255, 181, 71, 0.40);
+  color: var(--ps-warning);
+}
+
+.ps-chip-negative {
+  border-color: rgba(255, 92, 122, 0.40);
+  color: var(--ps-negative);
+}
+
+/* Live pulse dot */
+.ps-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--ps-yellow-green);
+  box-shadow: var(--ps-yellow-green-glow);
+  animation: ps-breathing 1800ms ease-in-out infinite;
+}
+
+@keyframes ps-breathing {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.2); opacity: 1; }
+}
+
+/* Online dot */
+.ps-online-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: var(--ps-yellow-green);
+  border: 2px solid var(--ps-canvas);
+  box-shadow: 0 0 6px var(--ps-yellow-green);
+}
+
+/* -------- Skeleton (shimmer) -------- */
+
+.ps-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--ps-glass-bg);
+  border-radius: 12px;
+}
+
+.ps-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: ps-shimmer 1500ms infinite;
+}
+
+@keyframes ps-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* -------- Z-index tokens (Orderflow rules) -------- */
+
+[data-ps-root] {
+  --ps-z-shell: 100;
+  --ps-z-header: 200;
+  --ps-z-composer: 300;
+  --ps-z-bottom-nav: 400;
+  --ps-z-sheet: 500;
+  --ps-z-modal: 600;
+  --ps-z-toast: 700;
+  --ps-z-banner: 800;
+}
+
+/* -------- Connection banner -------- */
+
+.ps-connection-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--ps-z-banner, 800);
+  padding: 8px 14px;
+  background: var(--ps-glass-bg-active);
+  -webkit-backdrop-filter: blur(var(--ps-glass-blur));
+          backdrop-filter: blur(var(--ps-glass-blur));
+  border-bottom: 1px solid var(--ps-border-subtle);
+  color: var(--ps-text);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ps-connection-banner[data-state='reconnecting'] {
+  border-color: rgba(255, 181, 71, 0.40);
+  color: var(--ps-warning);
+}
+
+.ps-connection-banner[data-state='offline'] {
+  border-color: rgba(255, 92, 122, 0.40);
+  color: var(--ps-negative);
+}
+
+/* -------- Tail bubbles -------- */
+
+.ps-bubble {
+  position: relative;
+  max-width: 78%;
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 15px;
+  line-height: 22px;
+  background: var(--ps-glass-bg);
+  -webkit-backdrop-filter: blur(var(--ps-glass-blur));
+          backdrop-filter: blur(var(--ps-glass-blur));
+  border: 1px solid var(--ps-border-subtle);
+  color: var(--ps-text);
+  word-wrap: break-word;
+  transition: transform 80ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ps-bubble:active {
+  transform: scale(0.99);
+}
+
+.ps-bubble--inbound { border-bottom-left-radius: 6px; }
+.ps-bubble--outbound {
+  background: var(--ps-glass-bg-active);
+  border-bottom-right-radius: 6px;
+}
+
+.ps-bubble--provider {
+  border-color: var(--ps-green);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.18), var(--ps-glass-inner-top);
+}
+
+.ps-bubble--provider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: var(--ps-green);
+  border-radius: 9999px;
+}
+
+/* -------- Insight (Messenger) bubble modifier --------
+ *
+ * Pixel-perfect Facebook Messenger clustering. Every bubble defaults to a
+ * fully-rounded 18px on all four corners (single message style). The two
+ * sender-side corners (right for outbound, left for inbound) only go sharp
+ * (4px) when this bubble is directly adjacent to another bubble from the
+ * same sender on that side — i.e. when it visually "fuses" with a neighbor.
+ *
+ * Grouping classes:
+ *   is-grouped-top    → previous bubble is from same sender (sharpen sender-side TOP)
+ *   is-grouped-bottom → next bubble is from same sender     (sharpen sender-side BOTTOM)
+ *
+ * Resulting shapes (matches Messenger reference):
+ *   single   → no classes        → 18px all corners
+ *   head     → is-grouped-bottom → sender-side bottom 4px
+ *   mid      → both              → sender-side top + bottom 4px
+ *   tail     → is-grouped-top    → sender-side top 4px
+ */
+/*
+ * Stitch reference (Global Strategy Chat):
+ *   inbound  → `rounded-tr-xl rounded-br-xl rounded-bl-xl` (sharp TOP-LEFT,
+ *              the corner pointing up toward the avatar+name meta row).
+ *   outbound → `rounded-tl-xl rounded-bl-xl rounded-tr-xl` with `rounded-br-sm`
+ *              tail (sharp BOTTOM-RIGHT on the tail bubble of a cluster).
+ *
+ * We translate that into per-position corners:
+ *   inbound HEAD/SINGLE  → sharp top-left
+ *   inbound MID/TAIL     → sharp top-left + sharp bottom-left
+ *   outbound HEAD/SINGLE → sharp top-right
+ *   outbound MID/TAIL    → sharp top-right + sharp bottom-right
+ */
+.ps-bubble--insight {
+  padding: 12px 16px;
+  font-size: 15px;
+  line-height: 1.5;
+  max-width: 100%;
+  background: var(--insight-bubble-inbound-bg);
+  border: 1px solid var(--insight-bubble-inbound-border);
+  color: var(--insight-bubble-inbound-fg);
+  box-shadow: var(--insight-bubble-shadow);
+  -webkit-backdrop-filter: none;
+          backdrop-filter: none;
+  word-break: break-word;
+  border-radius: 1rem;
+}
+
+/* Inbound: sharp top-left corner points up-left toward the avatar/name. */
+.ps-bubble--insight.ps-bubble--inbound {
+  border-top-left-radius: 0.25rem;
+}
+
+/* Outbound: sharp top-right corner mirrors the inbound rule. */
+.ps-bubble--insight.ps-bubble--outbound {
+  background: var(--insight-bubble-outbound-bg);
+  color: var(--insight-bubble-outbound-fg);
+  border: 1px solid var(--insight-bubble-outbound-border);
+  border-top-right-radius: 0.25rem;
+  box-shadow: 0 6px 22px -8px rgba(59, 130, 246, 0.35);
+}
+
+/*
+ * Cluster joints — when a bubble fuses with same-sender neighbors on the
+ * sender side, sharpen those corners too. Spacing between bubbles inside a
+ * cluster is 2px (handled in MessageList), so visually they read as one
+ * speech blob with a single "tail" pointing at the meta row above.
+ */
+.ps-bubble--insight.ps-bubble--inbound.is-grouped-top    { border-top-left-radius: 0.25rem; }
+.ps-bubble--insight.ps-bubble--inbound.is-grouped-bottom { border-bottom-left-radius: 0.25rem; }
+.ps-bubble--insight.ps-bubble--outbound.is-grouped-top    { border-top-right-radius: 0.25rem; }
+.ps-bubble--insight.ps-bubble--outbound.is-grouped-bottom { border-bottom-right-radius: 0.25rem; }
+
+/* Within-run vertical spacing is handled by MessageList wrapper margins. */
+
+.ps-bubble--insight .ps-bubble__body {
+  display: block;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* -------- Chat media (photos) — no glass bubble chrome -------- */
+
+.ps-bubble.ps-bubble--media,
+.ps-bubble--insight.ps-bubble--media {
+  padding: 0;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+}
+
+.ps-bubble--media.ps-bubble--provider::before {
+  display: none;
+}
+
+.ps-media-gallery {
+  width: 100%;
+  background: transparent;
+}
+
+.ps-media-gallery__single {
+  display: block;
+  max-width: 100%;
+  width: auto;
+  max-height: min(42vh, 280px);
+  height: auto;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
+.ps-media-gallery__grid {
+  display: grid;
+  gap: 2px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ps-media-gallery__cell {
+  position: relative;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.12);
+  min-height: 0;
+}
+
+.ps-media-gallery__cell img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ps-media-gallery__overflow {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* In Stitch the timestamp + author live in a row ABOVE the bubble (not inside). */
+.ps-bubble__meta-above {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 1;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.ps-bubble__meta-above .ps-bubble__meta-author {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--insight-gold);
+}
+
+.ps-bubble__meta-above .ps-bubble__meta-time {
+  font-size: 10px;
+  color: var(--insight-divider-pill-fg);
+  opacity: 0.85;
+}
+
+.ps-bubble__meta-above .ps-bubble__meta-provider {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--insight-gold);
+}
+
+/* "Seen" status row pinned beneath outbound bubble (gold accent + filled check). */
+.ps-bubble__status-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--insight-gold);
+  user-select: none;
+}
+
+.ps-bubble__status-row svg,
+.ps-bubble__status-row [data-status-icon] {
+  width: 14px;
+  height: 14px;
+}
+
+/*
+ * Below-bubble time caption (Messenger / Telegram style).
+ * Compact, muted, only rendered on cluster tail/single rows so it never
+ * stacks under every bubble. Latest-self variant carries a gold "Seen" trailer.
+ */
+.ps-bubble__time-below {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--insight-divider-pill-fg);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.ps-bubble__meta-row {
+  margin: 2px 6px 0;
+  width: max-content;
+  max-width: 100%;
+}
+
+/* Reactions + time sit in the gap between this bubble and the next. */
+.ps-bubble__meta-row:has(.ps-insight-meta-reaction-strip) {
+  margin-top: 4px;
+  margin-bottom: 8px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+/* Reactions grow away from the pinned timestamp — never over it. */
+.ps-bubble__meta-reactions {
+  display: flex;
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+}
+
+.ps-bubble__meta-reactions--outbound {
+  justify-content: flex-end;
+}
+
+.ps-bubble__meta-reactions--inbound {
+  justify-content: flex-start;
+}
+
+/* Meta-row reactions — flat emoji + optional count (Telegram-inspired, no pill). */
+.ps-insight-meta-reaction,
+.ps-insight-meta-reaction-add {
+  --insight-meta-reaction-emoji-size: 18px;
+  min-height: 0 !important;
+  min-width: 0 !important;
+}
+
+.ps-insight-meta-reaction-strip {
+  gap: 10px;
+}
+
+.ps-insight-meta-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--insight-divider-pill-fg);
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  -webkit-appearance: none;
+          appearance: none;
+  transition: transform 80ms ease, opacity 120ms ease;
+}
+
+.ps-insight-meta-reaction:hover {
+  opacity: 0.88;
+}
+
+.ps-insight-meta-reaction:active {
+  transform: scale(0.92);
+}
+
+.ps-insight-meta-reaction__emoji {
+  display: block;
+  font-size: var(--insight-meta-reaction-emoji-size);
+  line-height: 1;
+}
+
+.ps-insight-meta-reaction__count {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--insight-divider-pill-fg);
+}
+
+.ps-insight-meta-reaction[data-mine='true'] .ps-insight-meta-reaction__count {
+  color: var(--insight-gold-strong);
+}
+
+.ps-insight-meta-reaction-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--insight-meta-reaction-emoji-size);
+  height: var(--insight-meta-reaction-emoji-size);
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 1px dashed color-mix(in srgb, var(--insight-divider-pill-fg) 50%, transparent);
+  background: transparent;
+  color: var(--insight-divider-pill-fg);
+  cursor: pointer;
+  -webkit-appearance: none;
+          appearance: none;
+  transition: transform 80ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.ps-insight-meta-reaction-add:hover {
+  color: var(--insight-bubble-inbound-fg);
+  border-color: color-mix(in srgb, var(--insight-divider-pill-fg) 75%, transparent);
+}
+
+.ps-insight-meta-reaction-add:active {
+  transform: scale(0.92);
+}
+
+.ps-bubble__time-below--seen {
+  color: var(--insight-gold);
+}
+
+.ps-bubble__time-below--seen svg {
+  color: var(--insight-gold);
+}
+
+/*
+ * Insight chat signal card — same cluster width as `.ps-bubble` (parent
+ * `max-w-[85%]`) with tighter vertical rhythm than Signal Stream grid cards.
+ */
+.ps-signal-card--chat {
+  width: 100%;
+  max-width: 100%;
+  font-size: 11px;
+}
+
+.ps-signal-card--chat .bg-muted\/50 {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+
+/* Day separator pill — Stitch "Yesterday / Today / MAY 12" badge. */
+.ps-insight-day-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 14px;
+  border-radius: 9999px;
+  background: var(--insight-divider-pill-bg);
+  border: 1px solid var(--insight-divider-pill-border);
+  color: var(--insight-divider-pill-fg);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(8px);
+}
+
+/* Reaction pill (Stitch white border pill with emoji + count). */
+.ps-insight-reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--insight-reaction-pill-bg);
+  border: 1px solid var(--insight-reaction-pill-border);
+  font-size: 10px;
+  line-height: 1;
+  color: var(--insight-bubble-inbound-fg);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  cursor: pointer;
+  transition: transform 80ms ease;
+}
+
+.ps-insight-reaction-pill.liquid-glass {
+  background: var(--insight-glass-bg);
+  border-color: var(--insight-glass-border);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+          backdrop-filter: blur(16px) saturate(1.5);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.ps-insight-reaction-pill:hover {
+  transform: scale(1.05);
+}
+
+.ps-insight-reaction-pill[data-mine='true'] {
+  border-color: var(--insight-gold);
+  color: var(--insight-gold);
+}
+
+/* Typing indicator pill (3 gold bouncing dots inside a white/dark pill + caption). */
+.ps-insight-typing-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: 9999px;
+  background: var(--insight-typing-bg);
+  border: 1px solid var(--insight-typing-border);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.ps-insight-typing-pill .ps-insight-typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--insight-gold);
+  animation: ps-insight-typing-bounce 1.2s infinite ease-in-out;
+}
+
+.ps-insight-typing-pill .ps-insight-typing-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.ps-insight-typing-pill .ps-insight-typing-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes ps-insight-typing-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.6; }
+  40% { transform: translateY(-3px); opacity: 1; }
+}
+
+.ps-insight-typing-caption {
+  font-size: 11px;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--insight-divider-pill-fg);
+}
+
+/* Composer pill input (Stitch focus-within ring). */
+.ps-insight-composer-shell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--insight-composer-bg);
+  border: 1px solid var(--insight-composer-border);
+  border-radius: 9999px;
+  padding: 6px 16px;
+  transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.ps-insight-composer-shell:focus-within {
+  background: var(--insight-composer-focus-bg);
+  border-color: rgba(192, 154, 88, 0.35);
+  box-shadow: 0 8px 24px -8px rgba(15, 23, 42, 0.18);
+}
+
+/* Compact composer row inside InsightChatInputStack (VK open). */
+.ps-insight-composer-shell--compact {
+  padding: 1px 10px;
+  gap: 4px;
+}
+
+.ps-insight-composer-shell--compact.ps-insight-composer-shell--multiline {
+  padding: 4px 10px;
+  border-radius: 16px;
+  align-items: flex-end;
+}
+
+.ps-insight-composer-shell--compact .ps-insight-composer-icon-btn {
+  padding: 2px;
+}
+
+.ps-insight-composer-shell--compact .ps-insight-composer-textarea {
+  padding: 0;
+  line-height: 18px;
+  font-size: 14px;
+}
+
+.ps-insight-composer-textarea--stack-single {
+  height: 18px;
+  max-height: 18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-right: 2px;
+  scrollbar-width: none;
+}
+
+.ps-insight-composer-textarea--stack-single::-webkit-scrollbar {
+  display: none;
+}
+
+.ps-insight-composer-textarea--stack-multiline {
+  max-height: 90px;
+  overflow-y: auto;
+}
+
+.ps-insight-send-btn--compact {
+  width: 28px;
+  height: 28px;
+}
+
+.ps-insight-composer-icon-btn {
+  flex-shrink: 0;
+  padding: 6px;
+  border-radius: 9999px;
+  color: var(--ps-text-tertiary);
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.ps-insight-composer-icon-btn:hover,
+.ps-insight-composer-icon-btn:focus-visible {
+  color: var(--insight-gold);
+}
+
+.ps-insight-composer-textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 10px 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ps-text);
+  font-family: inherit;
+  max-height: 96px;
+  overflow-y: auto;
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: plaintext;
+}
+
+.ps-insight-composer-textarea--virtual-focus {
+  caret-color: var(--insight-gold, #c09a58);
+}
+
+.ps-insight-composer-textarea::placeholder {
+  color: var(--ps-text-tertiary);
+}
+
+.ps-insight-send-btn {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--insight-send-bg);
+  color: var(--insight-send-fg);
+  box-shadow: 0 6px 16px -6px rgba(15, 23, 42, 0.4);
+  transition: transform 100ms ease, box-shadow 200ms ease, opacity 150ms ease;
+}
+
+.ps-insight-send-btn:hover:not(:disabled) {
+  box-shadow: 0 10px 24px -8px rgba(15, 23, 42, 0.45);
+}
+
+.ps-insight-send-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.ps-insight-send-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* -------- System message (audit) -------- */
+
+.ps-system-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 12px;
+  color: var(--ps-text-tertiary);
+}
+
+.ps-system-message::before,
+.ps-system-message::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ps-hairline);
+  max-width: 80px;
+}
+
+/* -------- Responsive room grid (Discover + My Rooms) -------- */
+
+.ps-room-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .ps-room-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .ps-room-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
+.ps-content-max {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+@media (min-width: 1280px) {
+  .ps-content-max {
+    max-width: 880px;
+  }
+}
+
+/* -------- Hide global bottom nav while inside a Pattern Stream room -------- */
+
+body[data-ps-in-room='true'] [data-mobile-bottom-nav],
+body[data-ps-in-room='true'] [data-bottom-nav],
+body[data-ps-in-room='true'] .mobile-bottom-nav,
+body[data-ps-in-room='true'] [data-component='SignalStreamBottomNav'] {
+  display: none !important;
+}
+
+/* -------- Pull to refresh indicator -------- */
+
+.ps-ptr {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 250;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ps-ptr-spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  border: 2px solid var(--ps-green);
+  border-top-color: transparent;
+  animation: ps-spin 700ms linear infinite;
+}
+
+@keyframes ps-spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* -------- Insight: liquid-glass pill without [data-ps-root] (refraction tokens) -------- */
+
+.insight-liquid-glass-context {
+  --ps-glass-bg: rgba(255, 255, 255, 0.032);
+  --ps-glass-bg-elev: rgba(255, 255, 255, 0.06);
+  --ps-glass-bg-active: rgba(255, 255, 255, 0.09);
+  --ps-glass-blur: 40px;
+  --ps-glass-saturate: 1.78;
+  --ps-border-subtle: rgba(255, 255, 255, 0.06);
+  --ps-glass-edge-top: rgba(255, 255, 255, 0.38);
+  --ps-glass-edge-bottom: rgba(0, 0, 0, 0.32);
+  --ps-glass-shadow-outer:
+    0 8px 36px rgba(0, 0, 0, 0.3),
+    0 1px 2px rgba(0, 0, 0, 0.14);
+  --ps-glass-inner-top: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  --ps-glass-inner-bottom: inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  --ps-glass-sheen: radial-gradient(
+    125% 60% at 50% -12%,
+    rgba(255, 255, 255, 0.14),
+    rgba(255, 255, 255, 0.025) 40%,
+    transparent 65%
+  );
+  --ps-green: #22c55e;
+  --ps-text: #fafafa;
+  --ps-text-secondary: #c9c9c9;
+  --ps-text-tertiary: #8a8a8a;
+}
+
+/**
+ * Insight embedded tab bar: edgeless pill — no hairline/inset rim; blur + soft float shadow only.
+ */
+.liquid-glass.insight-tab-bar-glass {
+  border: none;
+  outline: none;
+  background: rgba(255, 255, 255, 0.022);
+  -webkit-backdrop-filter: blur(46px) saturate(1.92);
+          backdrop-filter: blur(46px) saturate(1.92);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.24);
+}
+
+.liquid-glass.insight-tab-bar-glass::before {
+  display: none;
+}
+
+.liquid-glass.insight-tab-bar-glass::after {
+  /* Interior-only sheen — avoids a lit outline on the pill */
+  background: radial-gradient(
+    120% 90% at 50% 50%,
+    rgba(255, 255, 255, 0.07),
+    transparent 62%
+  );
+  opacity: 0.45;
+}
+
+.liquid-glass.insight-tab-bar-glass:hover::after {
+  opacity: 0.52;
+}
+
+/**
+ * kube.io-style refraction: SVG feDisplacementMap as backdrop-filter (Chromium).
+ * @see https://kube.io/blog/liquid-glass-css-svg/
+ */
+html.insight-chrome-liquid-glass-backdrop .liquid-glass.insight-tab-bar-glass {
+  /* SVG displacement first = lens-like warp; then strong frost blur */
+  background: rgba(255, 255, 255, 0.016);
+  -webkit-backdrop-filter: url(#insight-liquid-glass-backdrop-filter) blur(30px)
+    saturate(1.88);
+  backdrop-filter: url(#insight-liquid-glass-backdrop-filter) blur(30px) saturate(1.88);
+}
+
+/**
+ * Insight mobile bottom dock: frosted band behind the tab pill so feed content
+ * scrolling underneath is blurred and tinted instead of reading through sharply.
+ */
+.insight-bottom-nav-fade-blur {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  height: max(7.25rem, calc(env(safe-area-inset-bottom) + 6rem));
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(34px) saturate(1.42);
+  backdrop-filter: blur(34px) saturate(1.42);
+  -webkit-mask-image: linear-gradient(
+    to top,
+    #000 0%,
+    #000 26%,
+    rgba(0, 0, 0, 0.78) 50%,
+    rgba(0, 0, 0, 0.32) 74%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to top,
+    #000 0%,
+    #000 26%,
+    rgba(0, 0, 0, 0.78) 50%,
+    rgba(0, 0, 0, 0.32) 74%,
+    transparent 100%
+  );
+  background: linear-gradient(
+    to top,
+    hsl(var(--background) / 0.62) 0%,
+    hsl(var(--background) / 0.26) 44%,
+    hsl(var(--background) / 0.07) 70%,
+    transparent 100%
+  );
+}
+
+/* -------- Reduced motion / transparency fallbacks -------- */
+
+@media (prefers-reduced-transparency: reduce) {
+  .insight-bottom-nav-fade-blur {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: linear-gradient(
+      to top,
+      hsl(var(--background) / 0.94) 0%,
+      hsl(var(--background) / 0.52) 48%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to top,
+      #000 0%,
+      #000 22%,
+      transparent 96%
+    );
+    mask-image: linear-gradient(to top, #000 0%, #000 22%, transparent 96%);
+  }
+  html.insight-chrome-liquid-glass-backdrop .liquid-glass.insight-tab-bar-glass {
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    backdrop-filter: blur(14px) saturate(1.2);
+  }
+  .liquid-glass,
+  .ps-bubble,
+  .ps-chip,
+  .ps-input,
+  .ps-active-pill,
+  .ps-btn-secondary,
+  .ps-btn-primary,
+  .ps-connection-banner {
+    -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+    background: var(--ps-surface);
+  }
+  .liquid-glass::before,
+  .liquid-glass::after { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-glass::after { display: none; }
+  .ps-pulse-dot { animation: none; }
+  .ps-skeleton::after {
+    animation: ps-shimmer 0s infinite;
+    opacity: 0.5;
+  }
+  *[data-ps-root] *,
+  [data-ps-root] {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .liquid-glass,
+  .ps-bubble,
+  .ps-chip,
+  .ps-input,
+  .ps-active-pill {
+    forced-color-adjust: none;
+    background: Canvas;
+    color: CanvasText;
+    border: 1px solid CanvasText;
+  }
+}

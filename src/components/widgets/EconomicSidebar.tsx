@@ -4,7 +4,7 @@ import { Bell, GraduationCap, MessageSquare, Target } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { getAcademyAppUrl, getOrderFlowAppUrl } from '@/utils/environment';
+import { getOrderFlowAppUrl } from '@/utils/environment';
 interface EconomicSidebarProps {
   className?: string;
 }
@@ -35,13 +35,12 @@ export default function EconomicSidebar({
     delay: 0,
     fullWidth: true
   }, {
-    id: 'education',
-    title: 'Education',
+    id: 'classroom',
+    title: 'Classroom',
     icon: GraduationCap,
     bgColor: 'bg-purple-50/80 dark:bg-purple-950/20',
     iconBgColor: 'bg-purple-100 dark:bg-purple-900/30',
-    path: getAcademyAppUrl(),
-    external: true,
+    path: '/dashboard/insight/classroom',
     delay: 0.15
   }, {
     id: 'community',

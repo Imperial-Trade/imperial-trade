@@ -40,7 +40,10 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   testId,
   creator,
   justAdded = false,
-  timestampRefreshKey
+  timestampRefreshKey,
+  onCloseWithReason: onCloseWithReasonExternal,
+  onNotesSave: onNotesSaveExternal,
+  compact = false,
 }) => {
   const { colors } = useSignalTheme();
   // ✅ PHASE 2: Performance monitoring for TradeAlertCard renders
@@ -175,6 +178,15 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     setIsClosing(true);
     setIsSavingNotes(true);
     try {
+      if (onCloseWithReasonExternal) {
+        await onCloseWithReasonExternal(closingReason);
+        setIsPreparingToClose(false);
+        setIsEditingNotes(false);
+        setNotesDraft('');
+        setLocalNotes(closingReason);
+        return;
+      }
+
       // Get current user ID from creator
       if (!creator?.id) {
         throw new Error('User information not available');
@@ -298,6 +310,14 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       setIsEditingNotes(false);
       
       console.log(`📝 Saving notes for alert ${alert.id}:`, notesDraft);
+
+      if (onNotesSaveExternal) {
+        await onNotesSaveExternal(newNotes);
+        setNotesSyncStatus('saved');
+        setTimeout(() => setNotesSyncStatus('idle'), 2000);
+        toast({ title: 'Notes updated', description: 'Everyone can now see the new notes.' });
+        return;
+      }
       
       // Guard: Ensure we have creator info for authorization
       if (!creator?.id) {
@@ -440,7 +460,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
   return (
     <div 
-      className={`rounded-2xl border overflow-hidden transition-all duration-300 ${className || ''}`}
+      className={`border overflow-hidden transition-all duration-300 ${compact ? 'ps-signal-card--chat rounded-xl' : 'rounded-2xl'} ${className || ''}`}
       style={{
         ...getCardBackgroundStyle(),
         borderColor: isClosed 
@@ -489,7 +509,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
             <>
               <button
                 onClick={handleCopyPanelToggle}
-                className="h-7 w-7 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                className={`${compact ? "h-6 w-6" : "h-7 w-7"} rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105`}
                 style={{
                   background: showCopyPanel ? colors.state.active : colors.bg.surface,
                   border: `1px solid ${colors.border.default}`,
@@ -505,7 +525,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                 signal={tradeSignal}
                 trigger={
                   <button
-                    className="h-7 w-7 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                    className={`${compact ? "h-6 w-6" : "h-7 w-7"} rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105`}
                     style={{
                       background: colors.bg.surface,
                       border: `1px solid ${colors.border.default}`,
@@ -569,13 +589,14 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         status={alert.status}
         closeReason={alert.close_reason}
         allowAutomation={isCreator}
+        compact={compact}
         onTakeProfitHit={onTakeProfitHit}
         onStopLossHit={onStopLossHit}
         onOrderActivation={onOrderActivation}
       />
       
       
-      <div className="px-3 pb-3">
+      <div className={compact ? "px-2 pb-2" : "px-3 pb-3"}>
         <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-muted-foreground">
@@ -604,7 +625,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                   ? "Explain why you're cancelling this order..." 
                   : "Explain why you're closing this signal...")
                 : "Add helpful context for followers..."}
-              className="min-h-[60px] text-sm"
+              className={compact ? "min-h-[44px] text-xs" : "min-h-[60px] text-sm"}
               autoFocus={isPreparingToClose}
             />
             <div className="flex justify-end gap-1.5">

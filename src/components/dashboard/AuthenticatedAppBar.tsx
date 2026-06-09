@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { getAcademyAppUrl, getOrderFlowAppUrl } from "@/utils/environment";
+import { getOrderFlowAppUrl } from "@/utils/environment";
 import { cn } from "@/lib/utils";
 import { useSignalTheme } from "@/hooks/useSignalTheme";
 import { useAuthorizationAware } from "@/hooks/useAuthorizationAware";
@@ -51,10 +51,9 @@ const AuthenticatedAppBar: React.FC = () => {
       label: "Pattern Stream",
     },
     {
-      to: getAcademyAppUrl(),
+      to: "/dashboard/insight/classroom",
       icon: GraduationCap,
-      label: "Education",
-      external: true,
+      label: "Classroom",
     },
     {
       to: "/dashboard/live",

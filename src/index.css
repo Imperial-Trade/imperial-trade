@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 @import './styles/touch.css';
+@import './styles/pattern-stream-tokens.css';
 
 @tailwind base;
 @tailwind components;
@@ -214,6 +215,93 @@
     --gray-lighter: 0 0% 25%; /* Darker grey */
     --gray-lightest: 0 0% 15%; /* Very dark grey */
   }
+
+  /**
+   * Insight (/dashboard/insight): match Orderflow feed shell (slate base + cyan primary for buttons/brand only).
+   * Focus `--ring` stays neutral; applied on `html` while the route is active.
+   */
+  html.insight-orderflow-theme {
+    --background: 220 17% 6%;
+    --foreground: 0 0% 100%;
+
+    --card: 220 16% 9%;
+    --card-foreground: 0 0% 100%;
+    --card-hover: 220 16% 12%;
+
+    --popover: 220 16% 9%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 191 91% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 16% 12%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 16% 12%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 220 16% 16%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 15%;
+    --input: 220 15% 15%;
+    --input-border: 220 15% 18%;
+    /* Focus ring: neutral slate, not --primary (cyan) — otherwise all `ring-ring` is a blue outline */
+    --ring: 220 12% 40%;
+    --bg-primary: 220 17% 6%;
+    --bg-secondary: 220 16% 8%;
+    --bg-elevated: 220 16% 12%;
+
+    --insight-chrome-gradient: linear-gradient(135deg, #3b82f6 0%, #9333ea 100%);
+
+    --sidebar-background: 220 13% 6%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 191 91% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 25% 12%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 215 20% 20%;
+    --sidebar-ring: 220 12% 40%;
+
+    --glass-feed-bg: rgba(12, 12, 18, 0.65);
+    --glass-feed-border: rgba(255, 255, 255, 0.18);
+    --glass-feed-divider: rgba(255, 255, 255, 0.1);
+    --glass-media-bg: rgba(12, 12, 18, 0.45);
+    --glass-media-border: rgba(255, 255, 255, 0.14);
+
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(30, 41, 59, 0.55);
+    --scrollbar-thumb-hover: rgba(51, 65, 85, 0.72);
+
+    color-scheme: dark;
+  }
+}
+
+/* Insight main column rooms search: same L→R clip reveal as Orderflow `/?search=1` (see orderflow `index.css`) */
+@keyframes orderflow-search-pill-reveal {
+  from {
+    clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+    opacity: 0.88;
+  }
+  to {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    opacity: 1;
+  }
+}
+
+.orderflow-search-pill-reveal {
+  animation: orderflow-search-pill-reveal 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orderflow-search-pill-reveal {
+    animation: none;
+    clip-path: none;
+    opacity: 1;
+  }
 }
 
 @layer base {
@@ -304,6 +392,47 @@
     overflow-x: hidden;
   }
 
+  /**
+   * Insight (/dashboard/insight): match Orderflow — document scroll, not a 100dvh locked shell.
+   * Placed after generic `html/body/#root` so it wins. PWA overrides below also exempt this theme.
+   */
+  html.insight-orderflow-theme {
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: auto;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    min-height: 100dvh;
+  }
+
+  html.insight-orderflow-theme body {
+    height: auto;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  html.insight-orderflow-theme #root {
+    height: auto;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  html.insight-orderflow-theme #root > div {
+    flex: 1 1 auto;
+    min-height: auto;
+  }
+
+  html.insight-orderflow-theme .app-router-wrapper,
+  html.insight-orderflow-theme .app-router-wrapper > * {
+    flex: 1 1 auto;
+    min-height: auto;
+  }
+
   /* iOS PWA: Force fullscreen on all routes */
   @media (display-mode: standalone) {
     html, body {
@@ -328,11 +457,51 @@
       overflow-y: auto !important;
       -webkit-overflow-scrolling: touch !important;
     }
+
+    /* Insight: Orderflow search needs a scrollable document; fixed html/body shows a flat plane above the keyboard */
+    html.insight-orderflow-theme,
+    html.insight-orderflow-theme body {
+      position: static !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      width: 100% !important;
+      max-width: 100vw !important;
+      height: auto !important;
+      min-height: 100dvh !important;
+      min-height: -webkit-fill-available !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+    }
+    html.insight-orderflow-theme #root {
+      height: auto !important;
+      min-height: 100dvh !important;
+      min-height: -webkit-fill-available !important;
+      overflow: visible !important;
+    }
+    html.insight-orderflow-theme #root > div {
+      flex: 1 1 auto !important;
+      min-height: auto !important;
+    }
+    html.insight-orderflow-theme .app-router-wrapper,
+    html.insight-orderflow-theme .app-router-wrapper > * {
+      flex: 1 1 auto !important;
+      min-height: auto !important;
+    }
+    html.insight-orderflow-theme [data-scroll-root] {
+      height: auto !important;
+      flex: 1 1 auto !important;
+      overflow-y: visible !important;
+      overflow-x: hidden !important;
+      -webkit-overflow-scrolling: auto !important;
+    }
   }
 
   /* iOS PWA: Additional check for standalone navigator property */
   @supports (-webkit-touch-callout: none) {
-    html.standalone, body.standalone {
+    html.standalone:not(.insight-orderflow-theme),
+    html.standalone:not(.insight-orderflow-theme) body.standalone {
       position: fixed !important;
       top: 0 !important;
       left: 0 !important;
@@ -348,9 +517,19 @@
       height: 100dvh !important;
       overflow: hidden !important;
     }
+    html.insight-orderflow-theme #root.standalone {
+      height: auto !important;
+      min-height: 100dvh !important;
+      min-height: -webkit-fill-available !important;
+      overflow: visible !important;
+    }
     .standalone [data-scroll-root] {
       overflow-y: auto !important;
       -webkit-overflow-scrolling: touch !important;
+    }
+    html.insight-orderflow-theme .standalone [data-scroll-root] {
+      overflow-y: visible !important;
+      -webkit-overflow-scrolling: auto !important;
     }
   }
 
@@ -2187,4 +2366,74 @@
 /* Smooth momentum scrolling for iOS */
 .scroll-touch {
   -webkit-overflow-scrolling: touch;
+}
+
+/* Insight / Orderflow-style full-page search: search pill wipes in left → right */
+@keyframes orderflow-search-pill-reveal {
+  from {
+    clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+    opacity: 0.88;
+  }
+  to {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    opacity: 1;
+  }
+}
+
+.orderflow-search-pill-reveal {
+  animation: orderflow-search-pill-reveal 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orderflow-search-pill-reveal {
+    animation: none;
+    clip-path: none;
+    opacity: 1;
+  }
+}
+
+/*
+ * Room chat from Insight (?from=insight): align PS bubbles with Insight surfaces.
+ */
+html.insight-orderflow-theme [data-insight-chat-surface] .ps-bubble {
+  background: hsl(var(--muted) / 0.5);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 1px solid hsl(var(--border) / 0.75);
+  color: hsl(var(--foreground));
+}
+
+html.insight-orderflow-theme [data-insight-chat-surface] .ps-bubble--outbound {
+  background: var(--insight-chrome-gradient, linear-gradient(135deg, #3b82f6 0%, #9333ea 100%));
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 6px 22px -8px rgba(59, 130, 246, 0.35);
+}
+
+html.insight-orderflow-theme [data-insight-chat-surface] .ps-bubble--outbound.ps-bubble--provider::before {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+html.insight-orderflow-theme [data-insight-chat-surface] .ps-bubble--inbound.ps-bubble--provider {
+  border-color: hsl(var(--border) / 0.9);
+  box-shadow: none;
+}
+
+html.insight-orderflow-theme [data-insight-chat-surface] .ps-bubble--inbound.ps-bubble--provider::before {
+  background: hsl(var(--muted-foreground) / 0.35);
+}
+
+html.insight-orderflow-theme [data-insight-chat-surface] .ps-system-message {
+  color: hsl(var(--muted-foreground));
+}
+
+html.insight-orderflow-theme [data-insight-chat-surface] .ps-system-message::before,
+html.insight-orderflow-theme [data-insight-chat-surface] .ps-system-message::after {
+  background: hsl(var(--border) / 0.6);
+}
+
+html.insight-orderflow-theme [data-insight-chat-surface] .insight-signal-card {
+  border-color: hsl(var(--border) / 0.6);
+  background: hsl(var(--card) / 0.4);
+  box-shadow: none;
 }

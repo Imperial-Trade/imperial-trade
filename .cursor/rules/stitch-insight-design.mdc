@@ -1,0 +1,21 @@
+---
+description: Google Stitch MCP workflow when editing Insight / Pattern Stream UI
+globs:
+  - src/insight/**
+  - src/pages/dashboard/insight/**
+  - src/pages/dashboard/pattern-stream/**
+  - src/components/pattern-stream/**
+  - src/styles/pattern-stream-tokens.css
+---
+
+# Stitch while editing Insight UI
+
+When the user is refining **Insight** or **Pattern Stream** screens (chat, discover, create room, settings):
+
+1. **Use the `google-stitch` MCP server** (project `.cursor/mcp.json`) to generate or refine layouts before large UI rewrites.
+2. **Prompt Stitch with product context** from `.stitch/project.json`: dark glass, cyan accent, Messenger/Telegram chat quality, mobile-first.
+3. **Reuse project id** when iterating: `STITCH_PROJECT_ID` in `.env` keeps screens in one Stitch project.
+4. **Implement in React** — map Stitch output to existing components (`FeedComposerStrip`, `MessageBubble`, `InsightRoomCard`, etc.) and CSS tokens; never drop unstyled HTML into routes.
+5. **CLI fallback** if MCP is unavailable: `npm run stitch:generate -- --prompt "..."` → files in `stitch-output/`.
+
+If MCP tools fail with auth errors, remind the user to set `STITCH_API_KEY` in `.env` and reload MCP in Cursor Settings.

@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { getAcademyAppUrl, getOrderFlowAppUrl } from "@/utils/environment";
+import { getOrderFlowAppUrl } from "@/utils/environment";
 import { DashboardUserRole } from "@/components/dashboard/DashboardUserRole";
 
 const DashboardNav: React.FC = () => {
@@ -29,7 +29,7 @@ const DashboardNav: React.FC = () => {
   const primaryNavItems = [
     { to: "/dashboard/signal-stream", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/dashboard/signal-stream", icon: Radio, label: "Signals" },
-    { to: getAcademyAppUrl(), icon: GraduationCap, label: "Education", external: true },
+    { to: "/dashboard/insight/classroom", icon: GraduationCap, label: "Classroom" },
   ];
 
   const secondaryNavItems = [

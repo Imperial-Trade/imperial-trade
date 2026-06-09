@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Wrench,
   Bot,
+  Users,
 } from "lucide-react";
 
 interface SidebarNavigationProps {
@@ -36,7 +37,8 @@ export function SidebarNavigation({ isCollapsed }: SidebarNavigationProps) {
 
   const navigationItems = [
     { to: "/dashboard/signal-stream", icon: Radio, label: "Signal Stream" },
-    { to: "/dashboard/education", icon: GraduationCap, label: "Education" },
+    { to: "/dashboard/pattern-stream", icon: Users, label: "Rooms" },
+    { to: "/dashboard/insight/classroom", icon: GraduationCap, label: "Classroom" },
     { to: "/dashboard/live", icon: Video, label: "Live Sessions" },
     { to: "/dashboard/forum", icon: MessageSquare, label: "Forum" },
     { to: "/dashboard/journal-xx", icon: Wrench, label: "Advanced Tools" },

@@ -29,7 +29,7 @@ jobs:
       - name: Merge main to production
         run: |
           git checkout production
-          git merge main --no-edit -m "chore: Auto-merge main to production [skip ci]"
+          git merge main --no-edit -m "chore: Auto-merge main to production"
           git push origin production
 
       - name: Verify merge
